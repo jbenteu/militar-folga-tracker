@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useData } from "@/contexts/DataContext";
-import { RANKS_ORDER, Rank } from "@/types";
+import { RANKS_ORDER, Rank, getRankGrade } from "@/types";
 import { useEffect, useState } from "react";
 
 interface MilitaryFormProps {
@@ -17,8 +17,7 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
   const { addMilitary, updateMilitary, getMilitaryById } = useData();
   const [name, setName] = useState("");
   const [rank, setRank] = useState<Rank>("3º Sargento");
-  const [branch, setBranch] = useState("");
-  const [degree, setDegree] = useState("");
+  const [branch, setBranch] = useState("Engenharia");
 
   useEffect(() => {
     if (militaryId) {
@@ -27,24 +26,25 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
         setName(military.name);
         setRank(military.rank);
         setBranch(military.branch);
-        setDegree(military.degree);
       }
     } else {
       // Reset form for new military
       setName("");
       setRank("3º Sargento");
-      setBranch("");
-      setDegree("");
+      setBranch("Engenharia");
     }
   }, [militaryId, getMilitaryById]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name || !branch || !degree) {
+    if (!name || !branch) {
       alert("Por favor, preencha todos os campos obrigatórios.");
       return;
     }
+    
+    // Automatically determine degree based on rank
+    const degree = getRankGrade(rank);
     
     if (militaryId) {
       const military = getMilitaryById(militaryId);
@@ -69,6 +69,19 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
     
     onComplete();
   };
+
+  const branchOptions = [
+    "Engenharia",
+    "Infantaria",
+    "Comunicações",
+    "Cavalaria", 
+    "Intendência",
+    "Saúde",
+    "Artilharia",
+    "Material Bélico",
+    "Aviação",
+    "Técnico Temporário"
+  ];
 
   return (
     <form onSubmit={handleSubmit}>
@@ -102,22 +115,18 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
           
           <div className="space-y-2">
             <Label htmlFor="branch">Arma</Label>
-            <Input
-              id="branch"
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="degree">Grau</Label>
-            <Input
-              id="degree"
-              value={degree}
-              onChange={(e) => setDegree(e.target.value)}
-              required
-            />
+            <Select value={branch} onValueChange={(value) => setBranch(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a arma" />
+              </SelectTrigger>
+              <SelectContent>
+                {branchOptions.map((branchOption) => (
+                  <SelectItem key={branchOption} value={branchOption}>
+                    {branchOption}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="flex justify-end space-x-2 pt-2">

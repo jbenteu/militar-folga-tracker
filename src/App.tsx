@@ -8,6 +8,7 @@ import ProcessesPage from "@/pages/ProcessesPage";
 import NotFound from "@/pages/NotFound";
 import { Toaster } from "@/components/ui/sonner";
 import { ProcessTypePage } from "@/pages/ProcessTypePages";
+import CreateProcessPage from "@/pages/CreateProcessPage";
 
 export function App() {
   return (
@@ -19,6 +20,7 @@ export function App() {
           <Route path="/militaries" element={<MilitariesPage />} />
           <Route path="/processes" element={<ProcessesPage />} />
           <Route path="/processes/:processType" element={<ProcessTypePage />} />
+          <Route path="/criar-processo" element={<CreateProcessPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>

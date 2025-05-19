@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -21,7 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "../ui/input";
 import { Search } from "lucide-react";
-import { Tabs } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Link, useNavigate } from "react-router-dom";
 
 interface ProcessListProps {
   processType?: ProcessType;
@@ -35,6 +37,7 @@ export function ProcessList({ processType }: ProcessListProps) {
   const [viewingProcess, setViewingProcess] = useState<string | null>(null);
   const [filterClass, setFilterClass] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
   const handleEdit = (id: string) => {
     setEditingProcess(id);
@@ -42,8 +45,8 @@ export function ProcessList({ processType }: ProcessListProps) {
   };
 
   const handleAdd = () => {
-    setEditingProcess(null);
-    setOpenAddDialog(true);
+    // Instead of opening a dialog, navigate to the create process page
+    navigate("/criar-processo", { state: { processType } });
   };
 
   const handleDelete = (id: string) => {
