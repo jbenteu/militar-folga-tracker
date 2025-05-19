@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import { ProcessList } from "@/components/process/ProcessList";
 import { ProcessType } from "@/types";
 import { useParams } from "react-router-dom";
+import { Tabs } from "@/components/ui/tabs";
 
 export function ProcessTypePage() {
   const { processType } = useParams<{ processType: string }>();
@@ -12,7 +13,9 @@ export function ProcessTypePage() {
   
   return (
     <Layout>
-      <ProcessList processType={decodedType} />
+      <Tabs defaultValue="details">
+        <ProcessList processType={decodedType} />
+      </Tabs>
     </Layout>
   );
 }

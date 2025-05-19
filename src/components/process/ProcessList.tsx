@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -22,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "../ui/input";
 import { Search } from "lucide-react";
+import { Tabs } from "@/components/ui/tabs";
 
 interface ProcessListProps {
   processType?: ProcessType;
@@ -214,11 +214,13 @@ export function ProcessList({ processType }: ProcessListProps) {
               {editingProcess ? 'Editar Processo' : 'Adicionar Novo Processo'}
             </DialogTitle>
           </DialogHeader>
-          <ProcessForm
-            processId={editingProcess}
-            processType={processType}
-            onComplete={() => setOpenAddDialog(false)}
-          />
+          <Tabs defaultValue="details">
+            <ProcessForm
+              processId={editingProcess}
+              processType={processType}
+              onComplete={() => setOpenAddDialog(false)}
+            />
+          </Tabs>
         </DialogContent>
       </Dialog>
 
