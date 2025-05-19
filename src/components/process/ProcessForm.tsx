@@ -18,28 +18,38 @@ import {
 } from "@/components/ui/select";
 import { useData } from "@/contexts/DataContext";
 import { formatDate, generateUniqueProcessNumber, getProcessMinMilitaries } from "@/lib/utils";
-import { ProcessType } from "@/types";
-import { CalendarIcon } from "lucide-react";
+import { ProcessType, ProcessClass, AssignedMilitary, MilitaryFunction, PROCESS_CLASSES } from "@/types";
+import { CalendarIcon, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MilitaryRanking } from "../military/MilitaryRanking";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
 
 interface ProcessFormProps {
   processId: string | null;
+  processType?: ProcessType;
   onComplete: () => void;
 }
 
-export function ProcessForm({ processId, onComplete }: ProcessFormProps) {
+export function ProcessForm({ processId, processType, onComplete }: ProcessFormProps) {
   const { addProcess, updateProcess, getProcessById, militaries } = useData();
   
-  const [type, setType] = useState<ProcessType>("TEAM");
-  const [processClass, setProcessClass] = useState("");
+  const [type, setType] = useState<ProcessType>(processType || "TEAM");
+  const [processClass, setProcessClass] = useState<ProcessClass>(PROCESS_CLASSES[0]);
   const [number, setNumber] = useState("");
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [assignedMilitaries, setAssignedMilitaries] = useState<string[]>([]);
+  const [selectedMilitaryIds, setSelectedMilitaryIds] = useState<string[]>([]);
+  const [assignedMilitaries, setAssignedMilitaries] = useState<AssignedMilitary[]>([]);
   
   // Generate unique process number for new processes
   useEffect(() => {
@@ -58,17 +68,23 @@ export function ProcessForm({ processId, onComplete }: ProcessFormProps) {
         setStartDate(process.startDate);
         setEndDate(process.endDate);
         setAssignedMilitaries(process.assignedMilitaries);
+        setSelectedMilitaryIds(process.assignedMilitaries.map(m => m.militaryId));
       }
     } else {
       // Reset form for new process
-      setType("TEAM");
-      setProcessClass("");
+      if (processType) {
+        setType(processType);
+      } else {
+        setType("TEAM");
+      }
+      setProcessClass(PROCESS_CLASSES[0]);
       setNumber(generateUniqueProcessNumber());
       setStartDate(new Date());
       setEndDate(null);
       setAssignedMilitaries([]);
+      setSelectedMilitaryIds([]);
     }
-  }, [processId, getProcessById]);
+  }, [processId, getProcessById, processType]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +97,13 @@ export function ProcessForm({ processId, onComplete }: ProcessFormProps) {
     const minMilitaries = getProcessMinMilitaries(type);
     if (assignedMilitaries.length < minMilitaries) {
       toast.error(`Este tipo de processo requer pelo menos ${minMilitaries} ${minMilitaries === 1 ? 'militar' : 'militares'}.`);
+      return;
+    }
+    
+    // Check if all assigned militaries have a function
+    const missingFunction = assignedMilitaries.some(m => !m.function);
+    if (missingFunction) {
+      toast.error("Todos os militares designados devem ter uma função atribuída.");
       return;
     }
     
@@ -109,13 +132,26 @@ export function ProcessForm({ processId, onComplete }: ProcessFormProps) {
   };
   
   const handleSelectMilitary = (militaryId: string) => {
-    setAssignedMilitaries((current) => {
+    setSelectedMilitaryIds((current) => {
       if (current.includes(militaryId)) {
+        // Remove from selected and assigned
+        setAssignedMilitaries(prev => prev.filter(m => m.militaryId !== militaryId));
         return current.filter((id) => id !== militaryId);
       } else {
+        // Add to selected and to assigned with default function
+        setAssignedMilitaries(prev => [
+          ...prev, 
+          { militaryId, function: 'Membro - Titular' }
+        ]);
         return [...current, militaryId];
       }
     });
+  };
+  
+  const handleChangeFunction = (militaryId: string, func: MilitaryFunction) => {
+    setAssignedMilitaries(prev => 
+      prev.map(m => m.militaryId === militaryId ? { ...m, function: func } : m)
+    );
   };
   
   const processTypes: ProcessType[] = [
@@ -124,6 +160,13 @@ export function ProcessForm({ processId, onComplete }: ProcessFormProps) {
     "PT",
     "Comissão de Conferência de Gêneros QR",
     "Comissão de Conferência de Munição",
+  ];
+  
+  const militaryFunctions: MilitaryFunction[] = [
+    "Membro - Titular",
+    "Membro - Substituto",
+    "Presidente - Titular",
+    "Presidente - Substituto"
   ];
   
   const minMilitaries = getProcessMinMilitaries(type);
@@ -135,7 +178,11 @@ export function ProcessForm({ processId, onComplete }: ProcessFormProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="type">Tipo de Processo</Label>
-              <Select value={type} onValueChange={(value) => setType(value as ProcessType)}>
+              <Select 
+                value={type} 
+                onValueChange={(value) => setType(value as ProcessType)}
+                disabled={!!processType}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
@@ -151,12 +198,21 @@ export function ProcessForm({ processId, onComplete }: ProcessFormProps) {
             
             <div className="space-y-2">
               <Label htmlFor="class">Classe</Label>
-              <Input
-                id="class"
-                value={processClass}
-                onChange={(e) => setProcessClass(e.target.value)}
-                required
-              />
+              <Select 
+                value={processClass} 
+                onValueChange={(value) => setProcessClass(value as ProcessClass)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a classe" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROCESS_CLASSES.map((cls) => (
+                    <SelectItem key={cls} value={cls}>
+                      {cls}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="space-y-2">
@@ -226,27 +282,64 @@ export function ProcessForm({ processId, onComplete }: ProcessFormProps) {
           
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <Label>Militares Designados ({assignedMilitaries.length}/{minMilitaries}+)</Label>
+              <Label>Designação de Militares ({assignedMilitaries.length}/{minMilitaries}+)</Label>
               <span className={`text-sm ${assignedMilitaries.length < minMilitaries ? "text-red-500" : "text-green-600"}`}>
                 {assignedMilitaries.length < minMilitaries 
                   ? `Mínimo de ${minMilitaries} ${minMilitaries === 1 ? 'militar' : 'militares'}`
                   : "Quantidade suficiente"}
               </span>
             </div>
-            
+
             {assignedMilitaries.length > 0 && (
-              <div className="bg-military-sand/20 p-3 rounded border border-military-sand mb-4">
+              <div className="bg-white p-3 rounded border border-military-blue mb-4">
                 <h3 className="text-sm font-semibold mb-2">Militares selecionados:</h3>
-                <ul className="list-disc pl-5">
-                  {assignedMilitaries.map((id) => {
-                    const mil = militaries.find((m) => m.id === id);
-                    return mil ? (
-                      <li key={id} className="text-sm">
-                        {mil.rank} {mil.name}
-                      </li>
-                    ) : null;
-                  })}
-                </ul>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Posto/Grad.</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Função</TableHead>
+                      <TableHead>Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {assignedMilitaries.map((assigned) => {
+                      const mil = militaries.find((m) => m.id === assigned.militaryId);
+                      return mil ? (
+                        <TableRow key={assigned.militaryId}>
+                          <TableCell>{mil.rank}</TableCell>
+                          <TableCell>{mil.name}</TableCell>
+                          <TableCell>
+                            <Select 
+                              value={assigned.function} 
+                              onValueChange={(value) => handleChangeFunction(assigned.militaryId, value as MilitaryFunction)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Selecione a função" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {militaryFunctions.map((func) => (
+                                  <SelectItem key={func} value={func}>
+                                    {func}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleSelectMilitary(assigned.militaryId)}
+                            >
+                              Remover
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ) : null;
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             )}
             
@@ -254,7 +347,7 @@ export function ProcessForm({ processId, onComplete }: ProcessFormProps) {
               <MilitaryRanking 
                 processType={type} 
                 onSelect={handleSelectMilitary}
-                selectedIds={assignedMilitaries}
+                selectedIds={selectedMilitaryIds}
               />
             </div>
           </div>

@@ -20,14 +20,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "../ui/input";
+import { Search } from "lucide-react";
 
-export function ProcessList() {
-  const { processes, deleteProcess } = useData();
+interface ProcessListProps {
+  processType?: ProcessType;
+}
+
+export function ProcessList({ processType }: ProcessListProps) {
+  const { processes, deleteProcess, getProcessesByType } = useData();
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
   const [editingProcess, setEditingProcess] = useState<string | null>(null);
   const [viewingProcess, setViewingProcess] = useState<string | null>(null);
-  const [filterType, setFilterType] = useState<ProcessType | "">("");
+  const [filterClass, setFilterClass] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleEdit = (id: string) => {
     setEditingProcess(id);
@@ -50,47 +57,101 @@ export function ProcessList() {
     setOpenDetailsDialog(true);
   };
 
-  const filteredProcesses = filterType 
-    ? processes.filter(p => p.type === filterType)
+  // Get processes of specific type if specified
+  const allProcesses = processType 
+    ? getProcessesByType(processType)
     : processes;
+    
+  // Apply filters
+  let filteredProcesses = allProcesses;
+  
+  if (filterClass) {
+    filteredProcesses = filteredProcesses.filter(p => p.class === filterClass);
+  }
+  
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase().trim();
+    filteredProcesses = filteredProcesses.filter(p => 
+      p.number.toLowerCase().includes(query) || 
+      p.class.toLowerCase().includes(query) || 
+      p.type.toLowerCase().includes(query)
+    );
+  }
 
-  const processTypes: ProcessType[] = [
-    "TEAM",
-    "TREM",
-    "PT",
-    "Comissão de Conferência de Gêneros QR",
-    "Comissão de Conferência de Munição",
+  const processClasses = [
+    "Classe I - Subsistência",
+    "Classe II - Intendência",
+    "Classe III - Óleos e Combustíveis",
+    "Classe IV - Patrimônio",
+    "Classe V - Armamento e Munição",
+    "Classe VI - Engenharia",
+    "Classe VII - Comunicações",
+    "Classe VIII - Saúde",
+    "Classe IX - Motomecanização ou Aviação",
+    "Classe X - Diversos"
   ];
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-military-navy">Lista de Processos</h2>
-        <Button onClick={handleAdd} className="bg-military-blue hover:bg-military-navy">
-          Adicionar Processo
+        <h2 className="text-2xl font-bold text-military-navy">
+          {processType ? `Processos: ${processType}` : 'Lista de Processos'}
+        </h2>
+        <Button 
+          onClick={handleAdd} 
+          className="bg-military-blue hover:bg-military-navy"
+        >
+          Adicionar Processo {processType ? `(${processType})` : ''}
         </Button>
       </div>
 
       <div className="bg-white p-4 rounded-md shadow mb-4">
-        <div className="flex items-center mb-4">
-          <label className="mr-2 font-medium">Filtrar por Tipo:</label>
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value as ProcessType | "")}
-            className="border rounded px-2 py-1"
-          >
-            <option value="">Todos</option>
-            {processTypes.map((type) => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <Input
+              placeholder="Buscar processo..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Filtrar por Classe:</label>
+            <select
+              value={filterClass}
+              onChange={(e) => setFilterClass(e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-military-blue"
+            >
+              <option value="">Todas</option>
+              {processClasses.map((cls) => (
+                <option key={cls} value={cls}>{cls}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="flex items-end">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setFilterClass("");
+                setSearchQuery("");
+              }}
+              className="w-full"
+            >
+              Limpar Filtros
+            </Button>
+          </div>
         </div>
 
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Número</TableHead>
-              <TableHead>Tipo</TableHead>
+              {!processType && <TableHead>Tipo</TableHead>}
               <TableHead>Classe</TableHead>
               <TableHead>Data Início</TableHead>
               <TableHead>Data Fim</TableHead>
@@ -101,7 +162,7 @@ export function ProcessList() {
           <TableBody>
             {filteredProcesses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-4">
+                <TableCell colSpan={processType ? 6 : 7} className="text-center py-4">
                   Nenhum processo encontrado
                 </TableCell>
               </TableRow>
@@ -109,7 +170,7 @@ export function ProcessList() {
               filteredProcesses.map((process) => (
                 <TableRow key={process.id}>
                   <TableCell>{process.number}</TableCell>
-                  <TableCell>{process.type}</TableCell>
+                  {!processType && <TableCell>{process.type}</TableCell>}
                   <TableCell>{process.class}</TableCell>
                   <TableCell>{formatDate(process.startDate)}</TableCell>
                   <TableCell>{formatDate(process.endDate)}</TableCell>
@@ -155,6 +216,7 @@ export function ProcessList() {
           </DialogHeader>
           <ProcessForm
             processId={editingProcess}
+            processType={processType}
             onComplete={() => setOpenAddDialog(false)}
           />
         </DialogContent>

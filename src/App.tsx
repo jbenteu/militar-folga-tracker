@@ -1,35 +1,28 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { DataProvider } from "./contexts/DataContext";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Index from "@/pages/Index";
+import { DataProvider } from "@/contexts/DataContext";
+import MilitariesPage from "@/pages/MilitariesPage";
+import ProcessesPage from "@/pages/ProcessesPage";
+import NotFound from "@/pages/NotFound";
+import { Toaster } from "@/components/ui/sonner";
+import { ProcessTypePage } from "@/pages/ProcessTypePages";
 
-import Index from "./pages/Index";
-import MilitariesPage from "./pages/MilitariesPage";
-import ProcessesPage from "./pages/ProcessesPage";
-import NotFound from "./pages/NotFound";
-
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+export function App() {
+  return (
     <DataProvider>
-      <TooltipProvider>
+      <Router>
         <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/militaries" element={<MilitariesPage />} />
-            <Route path="/processes" element={<ProcessesPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/militaries" element={<MilitariesPage />} />
+          <Route path="/processes" element={<ProcessesPage />} />
+          <Route path="/processes/:processType" element={<ProcessTypePage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Router>
     </DataProvider>
-  </QueryClientProvider>
-);
+  );
+}
 
 export default App;

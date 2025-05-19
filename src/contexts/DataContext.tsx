@@ -1,32 +1,49 @@
 
 import { ReactNode, createContext, useContext, useState, useEffect } from 'react';
-import { Military, MilitaryWithRestTime, Process } from '@/types';
+import { Military, MilitaryWithRestTime, Process, ProcessType, AssignedMilitary, MilitaryFunction } from '@/types';
 import { initialMilitaries, initialProcesses } from '@/lib/mock-data';
-import { addMilitaryWithRestTime, calculateRestDays } from '@/lib/utils';
+import { calculateRestDays } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 
 interface DataContextType {
   militaries: Military[];
   processes: Process[];
-  addMilitary: (military: Omit<Military, 'id'>) => void;
+  addMilitary: (military: Omit<Military, 'id' | 'processHistory'>) => void;
   updateMilitary: (military: Military) => void;
   deleteMilitary: (id: string) => void;
   addProcess: (process: Omit<Process, 'id'>) => void;
   updateProcess: (process: Process) => void;
   deleteProcess: (id: string) => void;
-  getMilitariesWithRestTime: () => MilitaryWithRestTime[];
+  getMilitariesWithRestTime: (processType?: ProcessType) => MilitaryWithRestTime[];
   getMilitaryById: (id: string) => Military | undefined;
   getProcessById: (id: string) => Process | undefined;
+  getProcessesByType: (type: ProcessType) => Process[];
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
-  const [militaries, setMilitaries] = useState<Military[]>(initialMilitaries);
-  const [processes, setProcesses] = useState<Process[]>(initialProcesses);
+  const [militaries, setMilitaries] = useState<Military[]>([]);
+  const [processes, setProcesses] = useState<Process[]>([]);
 
+  // Initialize or load from localStorage
   useEffect(() => {
+    // Transform initial data for compatibility with new structure
+    const transformedInitialMilitaries = initialMilitaries.map(m => ({
+      ...m,
+      processHistory: {} as Record<string, Date | null>
+    }));
+
+    const transformedInitialProcesses = initialProcesses.map(p => ({
+      ...p,
+      class: p.class as any, // Cast to the new ProcessClass type
+      assignedMilitaries: p.assignedMilitaries.map(id => ({
+        militaryId: id,
+        function: 'Membro - Titular' as MilitaryFunction
+      }))
+    }));
+
     // Load from localStorage if available
     const storedMilitaries = localStorage.getItem('militaries');
     const storedProcesses = localStorage.getItem('processes');
@@ -37,12 +54,28 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         // Convert string dates back to Date objects
         const militariesWithDates = parsed.map((m: any) => ({
           ...m,
-          lastProcessDate: m.lastProcessDate ? new Date(m.lastProcessDate) : null
+          lastProcessDate: m.lastProcessDate ? new Date(m.lastProcessDate) : null,
+          processHistory: m.processHistory || {}
         }));
+        
+        // Convert process history dates
+        militariesWithDates.forEach((m: any) => {
+          if (m.processHistory) {
+            Object.keys(m.processHistory).forEach(key => {
+              if (m.processHistory[key]) {
+                m.processHistory[key] = new Date(m.processHistory[key]);
+              }
+            });
+          }
+        });
+        
         setMilitaries(militariesWithDates);
       } catch (error) {
         console.error('Failed to parse stored militaries', error);
+        setMilitaries(transformedInitialMilitaries);
       }
+    } else {
+      setMilitaries(transformedInitialMilitaries);
     }
     
     if (storedProcesses) {
@@ -52,12 +85,24 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         const processesWithDates = parsed.map((p: any) => ({
           ...p,
           startDate: new Date(p.startDate),
-          endDate: p.endDate ? new Date(p.endDate) : null
+          endDate: p.endDate ? new Date(p.endDate) : null,
+          // Ensure assigned militaries have the new structure
+          assignedMilitaries: Array.isArray(p.assignedMilitaries) 
+            ? p.assignedMilitaries.map((m: any) => {
+                if (typeof m === 'string') {
+                  return { militaryId: m, function: 'Membro - Titular' };
+                }
+                return m;
+              })
+            : []
         }));
         setProcesses(processesWithDates);
       } catch (error) {
         console.error('Failed to parse stored processes', error);
+        setProcesses(transformedInitialProcesses);
       }
+    } else {
+      setProcesses(transformedInitialProcesses);
     }
   }, []);
 
@@ -71,8 +116,12 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   }, [processes]);
 
   // Military CRUD operations
-  const addMilitary = (military: Omit<Military, 'id'>) => {
-    const newMilitary = { ...military, id: uuidv4() };
+  const addMilitary = (military: Omit<Military, 'id' | 'processHistory'>) => {
+    const newMilitary = { 
+      ...military, 
+      id: uuidv4(),
+      processHistory: {} as Record<string, Date | null>
+    };
     setMilitaries([...militaries, newMilitary]);
     toast.success(`Militar ${military.name} adicionado com sucesso`);
   };
@@ -87,7 +136,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const deleteMilitary = (id: string) => {
     // Check if the military is assigned to any process
     const isAssigned = processes.some(process => 
-      process.assignedMilitaries.includes(id)
+      process.assignedMilitaries.some(m => m.militaryId === id)
     );
 
     if (isAssigned) {
@@ -110,10 +159,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     
     // Update last process date for assigned militaries
     const updatedMilitaries = militaries.map(military => {
-      if (process.assignedMilitaries.includes(military.id)) {
+      if (process.assignedMilitaries.some(m => m.militaryId === military.id)) {
+        const processHistory = { ...military.processHistory };
+        processHistory[process.type] = process.startDate;
+        
         return {
           ...military,
-          lastProcessDate: process.startDate
+          lastProcessDate: process.startDate,
+          processHistory
         };
       }
       return military;
@@ -130,16 +183,24 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     
     // Update last process date for newly assigned militaries
     const currentProcess = processes.find(p => p.id === updatedProcess.id);
-    const newlyAssigned = currentProcess 
-      ? updatedProcess.assignedMilitaries.filter(id => !currentProcess.assignedMilitaries.includes(id))
-      : updatedProcess.assignedMilitaries;
+    const currentAssignedIds = currentProcess 
+      ? currentProcess.assignedMilitaries.map(m => m.militaryId)
+      : [];
+      
+    const newlyAssignedIds = updatedProcess.assignedMilitaries
+      .map(m => m.militaryId)
+      .filter(id => !currentAssignedIds.includes(id));
     
-    if (newlyAssigned.length > 0) {
+    if (newlyAssignedIds.length > 0) {
       const updatedMilitaries = militaries.map(military => {
-        if (newlyAssigned.includes(military.id)) {
+        if (newlyAssignedIds.includes(military.id)) {
+          const processHistory = { ...military.processHistory };
+          processHistory[updatedProcess.type] = updatedProcess.startDate;
+          
           return {
             ...military,
-            lastProcessDate: updatedProcess.startDate
+            lastProcessDate: updatedProcess.startDate,
+            processHistory
           };
         }
         return military;
@@ -157,11 +218,21 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Helper functions
-  const getMilitariesWithRestTime = (): MilitaryWithRestTime[] => {
-    return militaries.map(military => ({
-      ...military,
-      restDays: calculateRestDays(military.lastProcessDate)
-    }));
+  const getMilitariesWithRestTime = (processType?: ProcessType): MilitaryWithRestTime[] => {
+    return militaries.map(military => {
+      const generalRestDays = calculateRestDays(military.lastProcessDate);
+      let processTypeRestDays = generalRestDays;
+      
+      if (processType && military.processHistory) {
+        processTypeRestDays = calculateRestDays(military.processHistory[processType]);
+      }
+      
+      return {
+        ...military,
+        restDays: generalRestDays,
+        restDaysForProcessType: processType ? processTypeRestDays : undefined
+      };
+    });
   };
 
   const getMilitaryById = (id: string): Military | undefined => {
@@ -170,6 +241,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   const getProcessById = (id: string): Process | undefined => {
     return processes.find(p => p.id === id);
+  };
+  
+  const getProcessesByType = (type: ProcessType): Process[] => {
+    return processes.filter(p => p.type === type);
   };
 
   return (
@@ -184,7 +259,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       deleteProcess,
       getMilitariesWithRestTime,
       getMilitaryById,
-      getProcessById
+      getProcessById,
+      getProcessesByType
     }}>
       {children}
     </DataContext.Provider>

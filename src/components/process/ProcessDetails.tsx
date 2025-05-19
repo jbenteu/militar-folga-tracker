@@ -22,9 +22,17 @@ export function ProcessDetails({ processId, onEdit }: ProcessDetailsProps) {
     return <div>Processo não encontrado</div>;
   }
   
-  const assignedMilitaries = militaries.filter(m => 
-    process.assignedMilitaries.includes(m.id)
-  );
+  const getAssignedMilitaries = () => {
+    return process.assignedMilitaries.map(assigned => {
+      const military = militaries.find(m => m.id === assigned.militaryId);
+      return { 
+        ...military, 
+        function: assigned.function 
+      };
+    }).filter(Boolean); // Remove undefined entries
+  };
+  
+  const assignedMilitaries = getAssignedMilitaries();
   
   return (
     <div className="space-y-4">
@@ -70,7 +78,7 @@ export function ProcessDetails({ processId, onEdit }: ProcessDetailsProps) {
             <Card key={military.id} className="military-card">
               <CardContent className="pt-4">
                 <h4 className="font-bold">{military.rank} {military.name}</h4>
-                <p className="text-sm">{military.branch} | {military.degree}</p>
+                <p className="text-sm">{military.branch} | {military.function}</p>
               </CardContent>
             </Card>
           ))}
