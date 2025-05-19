@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
@@ -33,6 +33,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ProcessFormProps {
   processId: string | null;
@@ -50,6 +51,7 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [selectedMilitaryIds, setSelectedMilitaryIds] = useState<string[]>([]);
   const [assignedMilitaries, setAssignedMilitaries] = useState<AssignedMilitary[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("details");
   
   // Generate unique process number for new processes
   useEffect(() => {
@@ -174,183 +176,205 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card className="border-0 shadow-none">
-        <CardContent className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="type">Tipo de Processo</Label>
-              <Select 
-                value={type} 
-                onValueChange={(value) => setType(value as ProcessType)}
-                disabled={!!processType}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {processTypes.map((processType) => (
-                    <SelectItem key={processType} value={processType}>
-                      {processType}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="class">Classe</Label>
-              <Select 
-                value={processClass} 
-                onValueChange={(value) => setProcessClass(value as ProcessClass)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a classe" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROCESS_CLASSES.map((cls) => (
-                    <SelectItem key={cls} value={cls}>
-                      {cls}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="number">Número</Label>
-              <Input
-                id="number"
-                value={number}
-                onChange={(e) => setNumber(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Data de Início</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !startDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "dd/MM/yyyy") : <span>Selecione a data</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={(date) => date && setStartDate(date)}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="endDate">Data de Fim (opcional)</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !endDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "dd/MM/yyyy") : <span>Selecione a data</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
+        <CardHeader className="px-0 pt-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-2 mb-4">
+              <TabsTrigger value="details">Detalhes do Processo</TabsTrigger>
+              <TabsTrigger value="militaries">Designação de Militares ({assignedMilitaries.length})</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </CardHeader>
+        
+        <CardContent className="space-y-4 pt-0">
+          <TabsContent value="details" className="mt-0">
+            <Card className="border shadow-sm">
+              <CardHeader>
+                <CardTitle>Informações do Processo</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Tipo de Processo</Label>
+                    <Select 
+                      value={type} 
+                      onValueChange={(value) => setType(value as ProcessType)}
+                      disabled={!!processType}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {processTypes.map((processType) => (
+                          <SelectItem key={processType} value={processType}>
+                            {processType}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="class">Classe</Label>
+                    <Select 
+                      value={processClass} 
+                      onValueChange={(value) => setProcessClass(value as ProcessClass)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a classe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PROCESS_CLASSES.map((cls) => (
+                          <SelectItem key={cls} value={cls}>
+                            {cls}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="number">Número</Label>
+                    <Input
+                      id="number"
+                      value={number}
+                      onChange={(e) => setNumber(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate">Data de Início</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !startDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {startDate ? format(startDate, "dd/MM/yyyy") : <span>Selecione a data</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={(date) => date && setStartDate(date)}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="endDate">Data de Fim (opcional)</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !endDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {endDate ? format(endDate, "dd/MM/yyyy") : <span>Selecione a data</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={setEndDate}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
           
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label>Designação de Militares ({assignedMilitaries.length}/{minMilitaries}+)</Label>
-              <span className={`text-sm ${assignedMilitaries.length < minMilitaries ? "text-red-500" : "text-green-600"}`}>
-                {assignedMilitaries.length < minMilitaries 
-                  ? `Mínimo de ${minMilitaries} ${minMilitaries === 1 ? 'militar' : 'militares'}`
-                  : "Quantidade suficiente"}
-              </span>
-            </div>
-
-            {assignedMilitaries.length > 0 && (
-              <div className="bg-white p-3 rounded border border-military-blue mb-4">
-                <h3 className="text-sm font-semibold mb-2">Militares selecionados:</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Posto/Grad.</TableHead>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Função</TableHead>
-                      <TableHead>Ação</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {assignedMilitaries.map((assigned) => {
-                      const mil = militaries.find((m) => m.id === assigned.militaryId);
-                      return mil ? (
-                        <TableRow key={assigned.militaryId}>
-                          <TableCell>{mil.rank}</TableCell>
-                          <TableCell>{mil.name}</TableCell>
-                          <TableCell>
-                            <Select 
-                              value={assigned.function} 
-                              onValueChange={(value) => handleChangeFunction(assigned.militaryId, value as MilitaryFunction)}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Selecione a função" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {militaryFunctions.map((func) => (
-                                  <SelectItem key={func} value={func}>
-                                    {func}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <Button 
-                              variant="destructive" 
-                              size="sm"
-                              onClick={() => handleSelectMilitary(assigned.militaryId)}
-                            >
-                              Remover
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ) : null;
-                    })}
-                  </TableBody>
-                </Table>
+          <TabsContent value="militaries" className="mt-0">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-medium">Designação de Militares</h3>
+                  <span className={`text-sm ${assignedMilitaries.length < minMilitaries ? "text-red-500" : "text-green-600"}`}>
+                    {assignedMilitaries.length < minMilitaries 
+                      ? `Mínimo de ${minMilitaries} ${minMilitaries === 1 ? 'militar' : 'militares'}`
+                      : "Quantidade suficiente"}
+                  </span>
+                </div>
               </div>
-            )}
-            
-            <div className="bg-white rounded border">
-              <MilitaryRanking 
-                processType={type} 
-                onSelect={handleSelectMilitary}
-                selectedIds={selectedMilitaryIds}
-              />
+
+              {assignedMilitaries.length > 0 && (
+                <div className="bg-white p-3 rounded border border-military-blue mb-4">
+                  <h3 className="text-sm font-semibold mb-2">Militares selecionados:</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Posto/Grad.</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Função</TableHead>
+                        <TableHead>Ação</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {assignedMilitaries.map((assigned) => {
+                        const mil = militaries.find((m) => m.id === assigned.militaryId);
+                        return mil ? (
+                          <TableRow key={assigned.militaryId}>
+                            <TableCell>{mil.rank}</TableCell>
+                            <TableCell>{mil.name}</TableCell>
+                            <TableCell>
+                              <Select 
+                                value={assigned.function} 
+                                onValueChange={(value) => handleChangeFunction(assigned.militaryId, value as MilitaryFunction)}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Selecione a função" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {militaryFunctions.map((func) => (
+                                    <SelectItem key={func} value={func}>
+                                      {func}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => handleSelectMilitary(assigned.militaryId)}
+                              >
+                                Remover
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ) : null;
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+              
+              <div className="bg-white rounded border">
+                <MilitaryRanking 
+                  processType={type} 
+                  onSelect={handleSelectMilitary}
+                  selectedIds={selectedMilitaryIds}
+                />
+              </div>
             </div>
-          </div>
+          </TabsContent>
           
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={onComplete}>

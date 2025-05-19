@@ -19,6 +19,7 @@ interface DataContextType {
   getMilitaryById: (id: string) => Military | undefined;
   getProcessById: (id: string) => Process | undefined;
   getProcessesByType: (type: ProcessType) => Process[];
+  addMilitariesFromCSV: (militaries: Omit<Military, 'id' | 'lastProcessDate' | 'processHistory'>[]) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -35,14 +36,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       processHistory: {} as Record<string, Date | null>
     }));
 
-    const transformedInitialProcesses = initialProcesses.map(p => ({
-      ...p,
-      class: p.class as any, // Cast to the new ProcessClass type
-      assignedMilitaries: p.assignedMilitaries.map(id => ({
-        militaryId: id,
-        function: 'Membro - Titular' as MilitaryFunction
-      }))
-    }));
+    const transformedInitialProcesses = initialProcesses;
 
     // Load from localStorage if available
     const storedMilitaries = localStorage.getItem('militaries');
@@ -85,16 +79,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         const processesWithDates = parsed.map((p: any) => ({
           ...p,
           startDate: new Date(p.startDate),
-          endDate: p.endDate ? new Date(p.endDate) : null,
-          // Ensure assigned militaries have the new structure
-          assignedMilitaries: Array.isArray(p.assignedMilitaries) 
-            ? p.assignedMilitaries.map((m: any) => {
-                if (typeof m === 'string') {
-                  return { militaryId: m, function: 'Membro - Titular' };
-                }
-                return m;
-              })
-            : []
+          endDate: p.endDate ? new Date(p.endDate) : null
         }));
         setProcesses(processesWithDates);
       } catch (error) {
@@ -124,6 +109,18 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     };
     setMilitaries([...militaries, newMilitary]);
     toast.success(`Militar ${military.name} adicionado com sucesso`);
+  };
+
+  const addMilitariesFromCSV = (newMilitaries: Omit<Military, 'id' | 'lastProcessDate' | 'processHistory'>[]) => {
+    const militariesToAdd = newMilitaries.map(m => ({
+      ...m,
+      id: uuidv4(),
+      lastProcessDate: null,
+      processHistory: {} as Record<string, Date | null>
+    }));
+    
+    setMilitaries([...militaries, ...militariesToAdd]);
+    toast.success(`${militariesToAdd.length} militares importados com sucesso`);
   };
 
   const updateMilitary = (updatedMilitary: Military) => {
@@ -260,7 +257,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       getMilitariesWithRestTime,
       getMilitaryById,
       getProcessById,
-      getProcessesByType
+      getProcessesByType,
+      addMilitariesFromCSV
     }}>
       {children}
     </DataContext.Provider>

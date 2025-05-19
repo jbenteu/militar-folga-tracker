@@ -21,10 +21,12 @@ import {
 import { MilitaryGrade, Rank, RANKS_ORDER, getRankGrade } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import ImportCSVModal from "./ImportCSVModal";
 
 export function MilitaryList() {
   const { militaries, deleteMilitary } = useData();
   const [openDialog, setOpenDialog] = useState(false);
+  const [openImportDialog, setOpenImportDialog] = useState(false);
   const [editingMilitary, setEditingMilitary] = useState<string | null>(null);
   const [filterRank, setFilterRank] = useState<Rank | "">("");
   const [filterGrade, setFilterGrade] = useState<MilitaryGrade | "">("");
@@ -81,9 +83,18 @@ export function MilitaryList() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-military-navy">Lista de Militares</h2>
-        <Button onClick={handleAdd} className="bg-military-blue hover:bg-military-navy">
-          Adicionar Militar
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setOpenImportDialog(true)}
+            className="border-military-blue text-military-blue hover:bg-military-blue/10"
+          >
+            Importar CSV
+          </Button>
+          <Button onClick={handleAdd} className="bg-military-blue hover:bg-military-navy">
+            Adicionar Militar
+          </Button>
+        </div>
       </div>
 
       <div className="bg-white p-4 rounded-md shadow mb-4">
@@ -215,6 +226,11 @@ export function MilitaryList() {
           />
         </DialogContent>
       </Dialog>
+
+      <ImportCSVModal 
+        open={openImportDialog}
+        onOpenChange={setOpenImportDialog}
+      />
     </div>
   );
 }

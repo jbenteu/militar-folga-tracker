@@ -64,11 +64,11 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				military: {
-					'navy': '#0A2463',
-					'blue': '#247BA0',
-					'light-blue': '#70C1B3',
-					'sand': '#E3D8B4',
-					'red': '#BF0603'
+					'navy': '#1B5E20',    // Dark green instead of navy blue
+					'blue': '#43A047',    // Medium green instead of blue
+					'light-blue': '#66BB6A', // Light green instead of light blue
+					'sand': '#C8E6C9',    // Light green instead of sand
+					'red': '#B71C1C'      // Keeping red for warnings/errors
 				}
 			},
 			borderRadius: {

@@ -29,8 +29,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="p-0 w-full sm:w-80 border-r-0" 
-                           overlayClassName="bg-black/50">
+              <SheetContent side="left" className="p-0 w-full sm:w-80 border-r-0">
                 <Sidebar mobile onClose={() => setIsOpen(false)} />
               </SheetContent>
             </Sheet>
@@ -51,4 +50,3 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
     </div>
   );
 }
-

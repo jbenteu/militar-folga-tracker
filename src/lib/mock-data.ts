@@ -1,5 +1,5 @@
 
-import { Military, Process, ProcessType, Rank } from "@/types";
+import { Military, Process, ProcessType, ProcessClass, Rank, AssignedMilitary, MilitaryFunction } from "@/types";
 import { v4 as uuidv4 } from "uuid";
 
 // Initial mock data for militaries
@@ -11,6 +11,7 @@ export const initialMilitaries: Military[] = [
     branch: "Infantaria",
     degree: "Superior",
     lastProcessDate: new Date("2023-12-15"),
+    processHistory: {}
   },
   {
     id: uuidv4(),
@@ -19,6 +20,7 @@ export const initialMilitaries: Military[] = [
     branch: "Cavalaria",
     degree: "Técnico",
     lastProcessDate: new Date("2023-11-20"),
+    processHistory: {}
   },
   {
     id: uuidv4(),
@@ -27,6 +29,7 @@ export const initialMilitaries: Military[] = [
     branch: "Artilharia",
     degree: "Superior",
     lastProcessDate: new Date("2024-01-10"),
+    processHistory: {}
   },
   {
     id: uuidv4(),
@@ -35,6 +38,7 @@ export const initialMilitaries: Military[] = [
     branch: "Infantaria",
     degree: "Superior",
     lastProcessDate: new Date("2024-02-01"),
+    processHistory: {}
   },
   {
     id: uuidv4(),
@@ -43,6 +47,7 @@ export const initialMilitaries: Military[] = [
     branch: "Engenharia",
     degree: "Superior",
     lastProcessDate: new Date("2023-10-05"),
+    processHistory: {}
   },
   {
     id: uuidv4(),
@@ -51,6 +56,7 @@ export const initialMilitaries: Military[] = [
     branch: "Comunicações",
     degree: "Superior",
     lastProcessDate: null,
+    processHistory: {}
   },
   {
     id: uuidv4(),
@@ -59,6 +65,7 @@ export const initialMilitaries: Military[] = [
     branch: "Infantaria",
     degree: "Superior",
     lastProcessDate: new Date("2023-09-15"),
+    processHistory: {}
   },
   {
     id: uuidv4(),
@@ -67,6 +74,7 @@ export const initialMilitaries: Military[] = [
     branch: "Cavalaria",
     degree: "Superior",
     lastProcessDate: new Date("2023-08-22"),
+    processHistory: {}
   },
 ];
 
@@ -75,28 +83,38 @@ export const initialProcesses: Process[] = [
   {
     id: uuidv4(),
     type: "TEAM",
-    class: "A-01",
+    class: "Classe I - Subsistência",
     number: "001/2024",
     startDate: new Date("2024-01-10"),
     endDate: new Date("2024-01-15"),
-    assignedMilitaries: [initialMilitaries[0].id, initialMilitaries[1].id, initialMilitaries[2].id],
+    assignedMilitaries: [
+      { militaryId: initialMilitaries[0].id, function: "Membro - Titular" },
+      { militaryId: initialMilitaries[1].id, function: "Membro - Titular" },
+      { militaryId: initialMilitaries[2].id, function: "Presidente - Titular" }
+    ],
   },
   {
     id: uuidv4(),
     type: "PT",
-    class: "B-02",
+    class: "Classe II - Intendência",
     number: "002/2024",
     startDate: new Date("2024-02-01"),
     endDate: new Date("2024-02-05"),
-    assignedMilitaries: [initialMilitaries[3].id],
+    assignedMilitaries: [
+      { militaryId: initialMilitaries[3].id, function: "Presidente - Titular" }
+    ],
   },
   {
     id: uuidv4(),
     type: "TREM",
-    class: "C-03",
+    class: "Classe III - Óleos e Combustíveis",
     number: "003/2024",
     startDate: new Date("2024-02-20"),
     endDate: null,
-    assignedMilitaries: [initialMilitaries[4].id, initialMilitaries[5].id, initialMilitaries[6].id],
+    assignedMilitaries: [
+      { militaryId: initialMilitaries[4].id, function: "Membro - Titular" },
+      { militaryId: initialMilitaries[5].id, function: "Membro - Substituto" },
+      { militaryId: initialMilitaries[6].id, function: "Presidente - Titular" }
+    ],
   },
 ];

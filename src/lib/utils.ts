@@ -1,7 +1,7 @@
 
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { Military, MilitaryWithRestTime, RANKS_ORDER, Rank } from "@/types"
+import { Military, MilitaryWithRestTime, ProcessType, RANKS_ORDER, Rank } from "@/types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -32,14 +32,22 @@ export function getRestTimeClass(days: number): string {
   return 'rest-time-low';
 }
 
-export function sortMilitariesByRankAndRestTime(militaries: MilitaryWithRestTime[]): MilitaryWithRestTime[] {
+export function sortMilitariesByRankAndRestTime(militaries: MilitaryWithRestTime[], restTimeProperty: 'restDays' | 'restDaysForProcessType' = 'restDays'): MilitaryWithRestTime[] {
   return [...militaries].sort((a, b) => {
     // First sort by rank (lower rank first)
     const rankCompare = RANKS_ORDER.indexOf(a.rank) - RANKS_ORDER.indexOf(b.rank);
     if (rankCompare !== 0) return rankCompare;
     
     // Then by rest time (more rest time first)
-    return b.restDays - a.restDays;
+    const aRestDays = restTimeProperty === 'restDaysForProcessType' && a.restDaysForProcessType !== undefined 
+      ? a.restDaysForProcessType 
+      : a.restDays;
+      
+    const bRestDays = restTimeProperty === 'restDaysForProcessType' && b.restDaysForProcessType !== undefined 
+      ? b.restDaysForProcessType 
+      : b.restDays;
+      
+    return bRestDays - aRestDays;
   });
 }
 
@@ -62,4 +70,34 @@ export function generateUniqueProcessNumber(): string {
   const currentYear = new Date().getFullYear();
   const randomNumber = Math.floor(Math.random() * 900) + 100; // 3-digit random number
   return `${randomNumber}/${currentYear}`;
+}
+
+// Function to parse CSV data for military import
+export function parseCSVForMilitaries(csvText: string): Omit<Military, 'id' | 'lastProcessDate' | 'processHistory'>[] {
+  const rows = csvText.trim().split('\n');
+  const militaries: Omit<Military, 'id' | 'lastProcessDate' | 'processHistory'>[] = [];
+  
+  // Skip the header row if it exists
+  const startRow = rows[0].includes('Nome') || rows[0].includes('Posto') ? 1 : 0;
+  
+  for (let i = startRow; i < rows.length; i++) {
+    const cols = rows[i].split(',');
+    if (cols.length >= 4) {
+      const name = cols[0].trim();
+      const rank = cols[1].trim() as Rank;
+      const branch = cols[2].trim();
+      const degree = cols[3].trim();
+      
+      if (name && rank && branch && degree && RANKS_ORDER.includes(rank)) {
+        militaries.push({
+          name,
+          rank,
+          branch,
+          degree
+        });
+      }
+    }
+  }
+  
+  return militaries;
 }
