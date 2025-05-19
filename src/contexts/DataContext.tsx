@@ -1,5 +1,4 @@
-
-import { ReactNode, createContext, useContext, useState, useEffect } from 'react';
+import React, { ReactNode, createContext, useContext, useState, useEffect } from 'react';
 import { Military, MilitaryWithRestTime, Process, ProcessType, AssignedMilitary, MilitaryFunction } from '@/types';
 import { initialMilitaries, initialProcesses } from '@/lib/mock-data';
 import { calculateRestDays } from '@/lib/utils';
@@ -24,7 +23,7 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-export const DataProvider = ({ children }: { children: ReactNode }) => {
+export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [militaries, setMilitaries] = useState<Military[]>([]);
   const [processes, setProcesses] = useState<Process[]>([]);
 
