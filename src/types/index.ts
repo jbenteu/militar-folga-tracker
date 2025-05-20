@@ -38,7 +38,10 @@ export type MilitaryFunction =
   | 'Membro - Titular' 
   | 'Membro - Substituto' 
   | 'Presidente - Titular' 
-  | 'Presidente - Substituto';
+  | 'Presidente - Substituto'
+  | 'Membro'
+  | 'Presidente'
+  | 'Assessor Técnico';
 
 export type ProcessType = 
   | 'TEAM' 
@@ -103,4 +106,3 @@ export interface MilitaryWithRestTime extends Military {
   restDays: number;
   restDaysForProcessType?: number;
 }
-

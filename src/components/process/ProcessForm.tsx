@@ -23,7 +23,7 @@ import { CalendarIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MilitaryRanking } from "../military/MilitaryRanking";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, lastDayOfMonth } from "date-fns";
 import { toast } from "sonner";
 import { 
   Table, 
@@ -52,7 +52,7 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   const [selectedMilitaryIds, setSelectedMilitaryIds] = useState<string[]>([]);
   const [assignedMilitaries, setAssignedMilitaries] = useState<AssignedMilitary[]>([]);
   const [activeTab, setActiveTab] = useState<string>("details");
-  const [month, setMonth] = useState<string>("");
+  const [month, setMonth] = useState<string>("01");
   const [year, setYear] = useState<string>("2025");
   
   // Generate unique process number for new processes
@@ -73,6 +73,13 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
         setEndDate(process.endDate);
         setAssignedMilitaries(process.assignedMilitaries);
         setSelectedMilitaryIds(process.assignedMilitaries.map(m => m.militaryId));
+        
+        // Extract month and year for special process types
+        if (isSpecialProcessType(process.type)) {
+          const parts = process.number.split('-')[1].split('/');
+          setMonth(parts[0]);
+          setYear(parts[1]);
+        }
       }
     } else {
       // Reset form for new process
@@ -97,13 +104,25 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   
   // When type changes, check if it's a special type and update number format if needed
   useEffect(() => {
-    const isSpecialType = type === "Comissão de Conferência de Gêneros QR" || type === "Comissão de Conferência de Munição";
+    const isSpecialType = isSpecialProcessType(type);
     
-    if (isSpecialType && !processId) {
+    if (isSpecialType) {
       // For these special types, we'll generate the process number based on month/year
       updateSpecialProcessNumber();
+      
+      // Set the start date to the first day of the month
+      const firstDay = new Date(parseInt(year), parseInt(month) - 1, 1);
+      setStartDate(firstDay);
+      
+      // Set the end date to the last day of the month
+      const lastDay = lastDayOfMonth(firstDay);
+      setEndDate(lastDay);
     }
-  }, [type, month, year, processId]);
+  }, [type, month, year]);
+  
+  const isSpecialProcessType = (type: ProcessType): boolean => {
+    return type === "Comissão de Conferência de Gêneros QR" || type === "Comissão de Conferência de Munição";
+  };
   
   const updateSpecialProcessNumber = () => {
     if (type === "Comissão de Conferência de Gêneros QR") {
@@ -116,7 +135,7 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!processClass || !number || !startDate) {
+    if ((!isSpecialProcessType(type) && !processClass) || !startDate) {
       toast.error("Por favor, preencha todos os campos obrigatórios.");
       return;
     }
@@ -138,19 +157,19 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
       updateProcess({
         id: processId,
         type,
-        class: processClass,
+        class: isSpecialProcessType(type) ? PROCESS_CLASSES[0] : processClass,
         number,
         startDate,
-        endDate,
+        endDate: endDate || startDate,
         assignedMilitaries,
       });
     } else {
       addProcess({
         type,
-        class: processClass,
+        class: isSpecialProcessType(type) ? PROCESS_CLASSES[0] : processClass,
         number,
         startDate,
-        endDate,
+        endDate: endDate || startDate,
         assignedMilitaries,
       });
     }
@@ -166,13 +185,24 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
         return current.filter((id) => id !== militaryId);
       } else {
         // Add to selected and to assigned with default function
+        const defaultFunction = getDefaultMilitaryFunction(type);
         setAssignedMilitaries(prev => [
           ...prev, 
-          { militaryId, function: 'Membro - Titular' }
+          { militaryId, function: defaultFunction }
         ]);
         return [...current, militaryId];
       }
     });
+  };
+  
+  const getDefaultMilitaryFunction = (processType: ProcessType): MilitaryFunction => {
+    const isSpecialType = isSpecialProcessType(processType);
+    
+    if (isSpecialType) {
+      return 'Membro - Titular';
+    } else {
+      return 'Membro';
+    }
   };
   
   const handleChangeFunction = (militaryId: string, func: MilitaryFunction) => {
@@ -189,12 +219,25 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
     "Comissão de Conferência de Munição",
   ];
   
-  const militaryFunctions: MilitaryFunction[] = [
-    "Membro - Titular",
-    "Membro - Substituto",
-    "Presidente - Titular",
-    "Presidente - Substituto"
-  ];
+  // Get available functions based on process type
+  const getAvailableFunctions = (processType: ProcessType): MilitaryFunction[] => {
+    const isSpecial = isSpecialProcessType(processType);
+    
+    if (isSpecial) {
+      return [
+        "Membro - Titular",
+        "Membro - Substituto",
+        "Presidente - Titular",
+        "Presidente - Substituto"
+      ];
+    } else {
+      return [
+        "Membro",
+        "Presidente",
+        "Assessor Técnico"
+      ];
+    }
+  };
   
   const minMilitaries = getProcessMinMilitaries(type);
   
@@ -215,7 +258,7 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   
   const years = ["2025", "2026", "2027", "2028", "2029", "2030"];
   
-  const isSpecialProcessType = type === "Comissão de Conferência de Gêneros QR" || type === "Comissão de Conferência de Munição";
+  const isSpecialType = isSpecialProcessType(type);
   
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -254,26 +297,7 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
                       </Select>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="class">Classe</Label>
-                      <Select 
-                        value={processClass} 
-                        onValueChange={(value) => setProcessClass(value as ProcessClass)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a classe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PROCESS_CLASSES.map((cls) => (
-                            <SelectItem key={cls} value={cls}>
-                              {cls}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    {isSpecialProcessType ? (
+                    {isSpecialType ? (
                       <>
                         <div className="space-y-2">
                           <Label htmlFor="month">Mês</Label>
@@ -312,81 +336,111 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
                         </div>
                         
                         <div className="space-y-2">
-                          <Label htmlFor="number">Número do Processo</Label>
+                          <Label htmlFor="startDate">Data de Início</Label>
+                          <Input
+                            id="startDate"
+                            value={startDate ? format(startDate, "dd/MM/yyyy") : ''}
+                            disabled
+                            className="bg-gray-100"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="endDate">Data de Fim</Label>
+                          <Input
+                            id="endDate"
+                            value={endDate ? format(endDate, "dd/MM/yyyy") : ''}
+                            disabled
+                            className="bg-gray-100"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="class">Classe</Label>
+                          <Select 
+                            value={processClass} 
+                            onValueChange={(value) => setProcessClass(value as ProcessClass)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a classe" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PROCESS_CLASSES.map((cls) => (
+                                <SelectItem key={cls} value={cls}>
+                                  {cls}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="number">Número</Label>
                           <Input
                             id="number"
                             value={number}
                             onChange={(e) => setNumber(e.target.value)}
                             required
-                            disabled
                           />
                         </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="startDate">Data de Início</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !startDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {startDate ? format(startDate, "dd/MM/yyyy") : <span>Selecione a data</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={startDate}
+                                onSelect={(date) => date && setStartDate(date)}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="endDate">Data de Fim (opcional)</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !endDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {endDate ? format(endDate, "dd/MM/yyyy") : <span>Selecione a data</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={endDate}
+                                onSelect={setEndDate}
+                                initialFocus
+                                className="pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                       </>
-                    ) : (
-                      <div className="space-y-2">
-                        <Label htmlFor="number">Número</Label>
-                        <Input
-                          id="number"
-                          value={number}
-                          onChange={(e) => setNumber(e.target.value)}
-                          required
-                        />
-                      </div>
                     )}
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="startDate">Data de Início</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !startDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {startDate ? format(startDate, "dd/MM/yyyy") : <span>Selecione a data</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={startDate}
-                            onSelect={(date) => date && setStartDate(date)}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="endDate">Data de Fim (opcional)</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !endDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {endDate ? format(endDate, "dd/MM/yyyy") : <span>Selecione a data</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={endDate}
-                            onSelect={setEndDate}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -433,7 +487,7 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
                                     <SelectValue placeholder="Selecione a função" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {militaryFunctions.map((func) => (
+                                    {getAvailableFunctions(type).map((func) => (
                                       <SelectItem key={func} value={func}>
                                         {func}
                                       </SelectItem>
