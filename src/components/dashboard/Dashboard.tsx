@@ -17,6 +17,18 @@ export function Dashboard() {
   
   return (
     <div className="space-y-6">
+      <div className="flex items-center space-x-4 mb-6">
+        <img 
+          src="/lovable-uploads/49c5397f-c69e-4a86-9b04-f0be1ca29930.png" 
+          alt="SCPA Logo" 
+          className="h-16 w-16" 
+        />
+        <div>
+          <h1 className="text-3xl font-bold text-military-navy">SCPA</h1>
+          <p className="text-xl text-military-navy/80">Controle de Processos - Fiscalização Administrativa</p>
+        </div>
+      </div>
+      
       <h2 className="text-2xl font-bold text-military-navy">Dashboard</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
