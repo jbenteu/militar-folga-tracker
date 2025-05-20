@@ -37,11 +37,11 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
           </div>
         </header>
         
-        <main className="flex-1 container mx-auto px-4 py-6">
+        <main className="flex-1 container mx-auto px-4 py-6 overflow-auto">
           {children}
         </main>
         
-        <footer className="bg-military-navy text-white py-3 text-sm">
+        <footer className="bg-military-navy text-white py-3 text-sm mt-auto">
           <div className="container mx-auto px-4 text-center">
             Sistema de Controle de Processos Administrativos © {new Date().getFullYear()}
           </div>

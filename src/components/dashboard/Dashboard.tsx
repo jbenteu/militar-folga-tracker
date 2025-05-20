@@ -2,6 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useData } from "@/contexts/DataContext";
 import { MilitaryRanking } from "../military/MilitaryRanking";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function Dashboard() {
   const { militaries, processes } = useData();
@@ -87,7 +88,9 @@ export function Dashboard() {
             <CardDescription>Ordenados por posto/graduação e tempo de folga</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <MilitaryRanking />
+            <ScrollArea className="h-[400px]">
+              <MilitaryRanking />
+            </ScrollArea>
           </CardContent>
         </Card>
       </div>
