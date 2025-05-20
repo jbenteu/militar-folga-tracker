@@ -12,7 +12,6 @@ import { useData } from "@/contexts/DataContext";
 import { formatDate } from "@/lib/utils";
 import { ProcessType } from "@/types";
 import { useState } from "react";
-import { ProcessForm } from "./ProcessForm";
 import { ProcessDetails } from "./ProcessDetails";
 import {
   Dialog,
@@ -22,8 +21,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "../ui/input";
 import { Search } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useNavigate } from "react-router-dom";
+import { ScrollArea } from "../ui/scroll-area";
 
 interface ProcessListProps {
   processType?: ProcessType;
@@ -31,22 +30,18 @@ interface ProcessListProps {
 
 export function ProcessList({ processType }: ProcessListProps) {
   const { processes, deleteProcess, getProcessesByType } = useData();
-  const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
-  const [editingProcess, setEditingProcess] = useState<string | null>(null);
   const [viewingProcess, setViewingProcess] = useState<string | null>(null);
   const [filterClass, setFilterClass] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
-  const handleEdit = (id: string) => {
-    setEditingProcess(id);
-    setOpenAddDialog(true);
+  const handleAdd = () => {
+    navigate("/criar-processo", { state: { processType } });
   };
 
-  const handleAdd = () => {
-    // Instead of opening a dialog, navigate to the create process page
-    navigate("/criar-processo", { state: { processType } });
+  const handleEdit = (id: string) => {
+    navigate(`/editar-processo/${id}`, { state: { processType } });
   };
 
   const handleDelete = (id: string) => {
@@ -109,7 +104,7 @@ export function ProcessList({ processType }: ProcessListProps) {
       </div>
 
       <div className="bg-white p-4 rounded-md shadow mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-end">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
@@ -150,82 +145,67 @@ export function ProcessList({ processType }: ProcessListProps) {
           </div>
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Número</TableHead>
-              {!processType && <TableHead>Tipo</TableHead>}
-              <TableHead>Classe</TableHead>
-              <TableHead>Data Início</TableHead>
-              <TableHead>Data Fim</TableHead>
-              <TableHead>Militares</TableHead>
-              <TableHead>Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredProcesses.length === 0 ? (
+        <ScrollArea className="h-[50vh]">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={processType ? 6 : 7} className="text-center py-4">
-                  Nenhum processo encontrado
-                </TableCell>
+                <TableHead>Número</TableHead>
+                {!processType && <TableHead>Tipo</TableHead>}
+                <TableHead>Classe</TableHead>
+                <TableHead>Data Início</TableHead>
+                <TableHead>Data Fim</TableHead>
+                <TableHead>Militares</TableHead>
+                <TableHead>Ações</TableHead>
               </TableRow>
-            ) : (
-              filteredProcesses.map((process) => (
-                <TableRow key={process.id}>
-                  <TableCell>{process.number}</TableCell>
-                  {!processType && <TableCell>{process.type}</TableCell>}
-                  <TableCell>{process.class}</TableCell>
-                  <TableCell>{formatDate(process.startDate)}</TableCell>
-                  <TableCell>{formatDate(process.endDate)}</TableCell>
-                  <TableCell>{process.assignedMilitaries.length} militares</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleViewDetails(process.id)}
-                      >
-                        Detalhes
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleEdit(process.id)}
-                      >
-                        Editar
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={() => handleDelete(process.id)}
-                      >
-                        Excluir
-                      </Button>
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {filteredProcesses.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={processType ? 6 : 7} className="text-center py-4">
+                    Nenhum processo encontrado
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                filteredProcesses.map((process) => (
+                  <TableRow key={process.id}>
+                    <TableCell>{process.number}</TableCell>
+                    {!processType && <TableCell>{process.type}</TableCell>}
+                    <TableCell>{process.class}</TableCell>
+                    <TableCell>{formatDate(process.startDate)}</TableCell>
+                    <TableCell>{formatDate(process.endDate)}</TableCell>
+                    <TableCell>{process.assignedMilitaries.length} militares</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleViewDetails(process.id)}
+                        >
+                          Detalhes
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleEdit(process.id)}
+                        >
+                          Editar
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => handleDelete(process.id)}
+                        >
+                          Excluir
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </ScrollArea>
       </div>
-
-      <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
-        <DialogContent className="sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle>
-              {editingProcess ? 'Editar Processo' : 'Adicionar Novo Processo'}
-            </DialogTitle>
-          </DialogHeader>
-          <Tabs defaultValue="details">
-            <ProcessForm
-              processId={editingProcess}
-              processType={processType}
-              onComplete={() => setOpenAddDialog(false)}
-            />
-          </Tabs>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={openDetailsDialog} onOpenChange={setOpenDetailsDialog}>
         <DialogContent className="sm:max-w-[700px]">
@@ -237,8 +217,7 @@ export function ProcessList({ processType }: ProcessListProps) {
               processId={viewingProcess}
               onEdit={() => {
                 setOpenDetailsDialog(false);
-                setEditingProcess(viewingProcess);
-                setOpenAddDialog(true);
+                navigate(`/editar-processo/${viewingProcess}`, { state: { processType } });
               }}
             />
           )}

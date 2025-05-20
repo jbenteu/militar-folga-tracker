@@ -7,6 +7,7 @@ import { MilitaryGrade, ProcessType, getRankGrade } from "@/types";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MilitaryRankingProps {
   processType?: ProcessType;
@@ -24,6 +25,15 @@ export function MilitaryRanking({ processType, onSelect, selectedIds = [] }: Mil
   // Get militaries with rest time and sort them
   const militariesWithRest = getMilitariesWithRestTime(processType);
   let sortedMilitaries = sortMilitariesByRankAndRestTime(militariesWithRest, processType ? 'restDaysForProcessType' : 'restDays');
+  
+  // Always sort by rest time first (most rested at top) when in the assignment tab
+  if (onSelect) {
+    sortedMilitaries = [...sortedMilitaries].sort((a, b) => {
+      const restDaysA = processType && a.restDaysForProcessType !== undefined ? a.restDaysForProcessType : a.restDays;
+      const restDaysB = processType && b.restDaysForProcessType !== undefined ? b.restDaysForProcessType : b.restDays;
+      return restDaysB - restDaysA;
+    });
+  }
   
   // Apply filters
   if (filterGrade) {
@@ -55,7 +65,7 @@ export function MilitaryRanking({ processType, onSelect, selectedIds = [] }: Mil
         <CardTitle>Ranking de Militares por Folga {processType ? `(${processType})` : ''}</CardTitle>
       </CardHeader>
       <CardContent className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-end">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
@@ -101,63 +111,65 @@ export function MilitaryRanking({ processType, onSelect, selectedIds = [] }: Mil
           </div>
         </div>
         
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Posto/Grad.</TableHead>
-              <TableHead>Nome</TableHead>
-              <TableHead>Última Participação</TableHead>
-              <TableHead>Dias em Folga</TableHead>
-              {onSelect && <TableHead>Ação</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {displayedMilitaries.length === 0 ? (
+        <ScrollArea className="h-[400px]">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={onSelect ? 5 : 4} className="text-center py-4">
-                  Nenhum militar encontrado
-                </TableCell>
+                <TableHead>Posto/Grad.</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Última Participação</TableHead>
+                <TableHead>Dias em Folga</TableHead>
+                {onSelect && <TableHead>Ação</TableHead>}
               </TableRow>
-            ) : displayedMilitaries.map((military) => {
-              const isSelected = selectedIds.includes(military.id);
-              const restDays = processType && military.restDaysForProcessType !== undefined
-                ? military.restDaysForProcessType
-                : military.restDays;
-              
-              return (
-                <TableRow 
-                  key={military.id} 
-                  className={isSelected ? "bg-military-sand/30" : ""}
-                >
-                  <TableCell>{military.rank}</TableCell>
-                  <TableCell>{military.name}</TableCell>
-                  <TableCell>
-                    {processType && military.processHistory?.[processType]
-                      ? formatDate(military.processHistory[processType])
-                      : formatDate(military.lastProcessDate)}
+            </TableHeader>
+            <TableBody>
+              {displayedMilitaries.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={onSelect ? 5 : 4} className="text-center py-4">
+                    Nenhum militar encontrado
                   </TableCell>
-                  <TableCell className={getRestTimeClass(restDays)}>
-                    {restDays} {restDays === 1 ? 'dia' : 'dias'}
-                  </TableCell>
-                  {onSelect && (
-                    <TableCell>
-                      <button
-                        className={`px-3 py-1 rounded text-sm ${
-                          isSelected 
-                            ? "bg-military-red text-white hover:bg-military-red/80" 
-                            : "bg-military-blue text-white hover:bg-military-blue/80"
-                        }`}
-                        onClick={() => onSelect(military.id)}
-                      >
-                        {isSelected ? "Remover" : "Selecionar"}
-                      </button>
-                    </TableCell>
-                  )}
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              ) : displayedMilitaries.map((military) => {
+                const isSelected = selectedIds.includes(military.id);
+                const restDays = processType && military.restDaysForProcessType !== undefined
+                  ? military.restDaysForProcessType
+                  : military.restDays;
+                
+                return (
+                  <TableRow 
+                    key={military.id} 
+                    className={isSelected ? "bg-military-sand/30" : ""}
+                  >
+                    <TableCell>{military.rank}</TableCell>
+                    <TableCell>{military.name}</TableCell>
+                    <TableCell>
+                      {processType && military.processHistory?.[processType]
+                        ? formatDate(military.processHistory[processType])
+                        : formatDate(military.lastProcessDate)}
+                    </TableCell>
+                    <TableCell className={getRestTimeClass(restDays)}>
+                      {restDays} {restDays === 1 ? 'dia' : 'dias'}
+                    </TableCell>
+                    {onSelect && (
+                      <TableCell>
+                        <button
+                          className={`px-3 py-1 rounded text-sm ${
+                            isSelected 
+                              ? "bg-military-red text-white hover:bg-military-red/80" 
+                              : "bg-military-blue text-white hover:bg-military-blue/80"
+                          }`}
+                          onClick={() => onSelect(military.id)}
+                        >
+                          {isSelected ? "Remover" : "Selecionar"}
+                        </button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </ScrollArea>
         {sortedMilitaries.length > 10 && (
           <div className="py-2 px-4 text-center mt-4">
             <button 

@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -22,6 +21,7 @@ import { MilitaryGrade, Rank, RANKS_ORDER, getRankGrade } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import ImportCSVModal from "./ImportCSVModal";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function MilitaryList() {
   const { militaries, deleteMilitary } = useData();
@@ -98,7 +98,7 @@ export function MilitaryList() {
       </div>
 
       <div className="bg-white p-4 rounded-md shadow mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 items-end">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
@@ -153,64 +153,66 @@ export function MilitaryList() {
           </div>
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Posto/Graduação</TableHead>
-              <TableHead>Grau</TableHead>
-              <TableHead>Arma</TableHead>
-              <TableHead>Última Participação</TableHead>
-              <TableHead>Dias em Folga</TableHead>
-              <TableHead>Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredMilitaries.length === 0 ? (
+        <ScrollArea className="h-[50vh]">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-4">
-                  Nenhum militar encontrado
-                </TableCell>
+                <TableHead>Nome</TableHead>
+                <TableHead>Posto/Graduação</TableHead>
+                <TableHead>Grau</TableHead>
+                <TableHead>Arma</TableHead>
+                <TableHead>Última Participação</TableHead>
+                <TableHead>Dias em Folga</TableHead>
+                <TableHead>Ações</TableHead>
               </TableRow>
-            ) : (
-              filteredMilitaries.map((military) => {
-                const restDays = calculateRestDays(military.lastProcessDate);
-                const restTimeClass = getRestTimeClass(restDays);
-                
-                return (
-                  <TableRow key={military.id}>
-                    <TableCell>{military.name}</TableCell>
-                    <TableCell>{military.rank}</TableCell>
-                    <TableCell>{getRankGrade(military.rank)}</TableCell>
-                    <TableCell>{military.branch}</TableCell>
-                    <TableCell>{formatDate(military.lastProcessDate)}</TableCell>
-                    <TableCell className={restTimeClass}>
-                      {restDays} {restDays === 1 ? 'dia' : 'dias'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleEdit(military.id)}
-                        >
-                          Editar
-                        </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm" 
-                          onClick={() => handleDelete(military.id)}
-                        >
-                          Excluir
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredMilitaries.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-4">
+                    Nenhum militar encontrado
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredMilitaries.map((military) => {
+                  const restDays = calculateRestDays(military.lastProcessDate);
+                  const restTimeClass = getRestTimeClass(restDays);
+                  
+                  return (
+                    <TableRow key={military.id}>
+                      <TableCell>{military.name}</TableCell>
+                      <TableCell>{military.rank}</TableCell>
+                      <TableCell>{getRankGrade(military.rank)}</TableCell>
+                      <TableCell>{military.branch}</TableCell>
+                      <TableCell>{formatDate(military.lastProcessDate)}</TableCell>
+                      <TableCell className={restTimeClass}>
+                        {restDays} {restDays === 1 ? 'dia' : 'dias'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleEdit(military.id)}
+                          >
+                            Editar
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            onClick={() => handleDelete(military.id)}
+                          >
+                            Excluir
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </ScrollArea>
       </div>
 
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>

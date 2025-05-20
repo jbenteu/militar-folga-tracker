@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +19,7 @@ import {
 import { useData } from "@/contexts/DataContext";
 import { formatDate, generateUniqueProcessNumber, getProcessMinMilitaries } from "@/lib/utils";
 import { ProcessType, ProcessClass, AssignedMilitary, MilitaryFunction, PROCESS_CLASSES } from "@/types";
-import { CalendarIcon, Search } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MilitaryRanking } from "../military/MilitaryRanking";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,8 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   const [selectedMilitaryIds, setSelectedMilitaryIds] = useState<string[]>([]);
   const [assignedMilitaries, setAssignedMilitaries] = useState<AssignedMilitary[]>([]);
   const [activeTab, setActiveTab] = useState<string>("details");
+  const [month, setMonth] = useState<string>("");
+  const [year, setYear] = useState<string>("2025");
   
   // Generate unique process number for new processes
   useEffect(() => {
@@ -84,8 +87,31 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
       setEndDate(null);
       setAssignedMilitaries([]);
       setSelectedMilitaryIds([]);
+      
+      // Initialize month/year for special process types
+      const currentDate = new Date();
+      setMonth((currentDate.getMonth() + 1).toString().padStart(2, '0'));
+      setYear("2025");
     }
   }, [processId, getProcessById, processType]);
+  
+  // When type changes, check if it's a special type and update number format if needed
+  useEffect(() => {
+    const isSpecialType = type === "Comissão de Conferência de Gêneros QR" || type === "Comissão de Conferência de Munição";
+    
+    if (isSpecialType && !processId) {
+      // For these special types, we'll generate the process number based on month/year
+      updateSpecialProcessNumber();
+    }
+  }, [type, month, year, processId]);
+  
+  const updateSpecialProcessNumber = () => {
+    if (type === "Comissão de Conferência de Gêneros QR") {
+      setNumber(`CG-${month}/${year}`);
+    } else if (type === "Comissão de Conferência de Munição") {
+      setNumber(`CM-${month}/${year}`);
+    }
+  };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,6 +198,25 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   
   const minMilitaries = getProcessMinMilitaries(type);
   
+  const months = [
+    { value: "01", label: "Janeiro" },
+    { value: "02", label: "Fevereiro" },
+    { value: "03", label: "Março" },
+    { value: "04", label: "Abril" },
+    { value: "05", label: "Maio" },
+    { value: "06", label: "Junho" },
+    { value: "07", label: "Julho" },
+    { value: "08", label: "Agosto" },
+    { value: "09", label: "Setembro" },
+    { value: "10", label: "Outubro" },
+    { value: "11", label: "Novembro" },
+    { value: "12", label: "Dezembro" },
+  ];
+  
+  const years = ["2025", "2026", "2027", "2028", "2029", "2030"];
+  
+  const isSpecialProcessType = type === "Comissão de Conferência de Gêneros QR" || type === "Comissão de Conferência de Munição";
+  
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card className="border-0 shadow-none">
@@ -228,15 +273,66 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
                       </Select>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="number">Número</Label>
-                      <Input
-                        id="number"
-                        value={number}
-                        onChange={(e) => setNumber(e.target.value)}
-                        required
-                      />
-                    </div>
+                    {isSpecialProcessType ? (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="month">Mês</Label>
+                          <Select
+                            value={month}
+                            onValueChange={setMonth}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o mês" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {months.map((m) => (
+                                <SelectItem key={m.value} value={m.value}>
+                                  {m.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="year">Ano</Label>
+                          <Select
+                            value={year}
+                            onValueChange={setYear}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o ano" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {years.map((y) => (
+                                <SelectItem key={y} value={y}>{y}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="number">Número do Processo</Label>
+                          <Input
+                            id="number"
+                            value={number}
+                            onChange={(e) => setNumber(e.target.value)}
+                            required
+                            disabled
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label htmlFor="number">Número</Label>
+                        <Input
+                          id="number"
+                          value={number}
+                          onChange={(e) => setNumber(e.target.value)}
+                          required
+                        />
+                      </div>
+                    )}
                     
                     <div className="space-y-2">
                       <Label htmlFor="startDate">Data de Início</Label>
