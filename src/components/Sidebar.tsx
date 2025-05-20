@@ -45,8 +45,8 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   
   return (
     <div className={cn(
-      "flex flex-col h-screen bg-military-navy text-white", 
-      mobile ? "w-full" : "w-64 min-w-64"
+      "flex flex-col h-full bg-military-navy text-white", 
+      mobile ? "w-full" : "w-64 min-w-64 h-screen"
     )}>
       <div className="flex items-center justify-between p-4 border-b border-military-light-blue/20">
         <h1 className="text-xl font-bold">SCPA</h1>
@@ -113,4 +113,3 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
     </div>
   );
 }
-
