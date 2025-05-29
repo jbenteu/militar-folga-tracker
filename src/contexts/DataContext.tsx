@@ -1,6 +1,6 @@
 
 import React, { ReactNode, createContext, useContext, useState, useEffect } from 'react';
-import { Military, MilitaryWithRestTime, Process, ProcessType, AssignedMilitary, MilitaryFunction } from '@/types';
+import { Military, MilitaryWithRestTime, Process, ProcessType, AssignedMilitary, MilitaryFunction, Rank, ProcessClass } from '@/types';
 import { calculateRestDays } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,10 +48,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('Error loading militaries:', militariesError);
         toast.error('Erro ao carregar militares do banco de dados');
       } else if (militariesData) {
-        const transformedMilitaries = militariesData.map(m => ({
-          ...m,
+        const transformedMilitaries: Military[] = militariesData.map(m => ({
+          id: m.id,
+          name: m.name,
+          rank: m.rank as Rank,
+          branch: m.branch,
+          degree: m.degree,
           lastProcessDate: m.last_process_date ? new Date(m.last_process_date) : null,
-          processHistory: m.process_history || {}
+          processHistory: (m.process_history as Record<string, Date | null>) || {}
         }));
         setMilitaries(transformedMilitaries);
       }
@@ -66,14 +70,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('Error loading processes:', processesError);
         toast.error('Erro ao carregar processos do banco de dados');
       } else if (processesData) {
-        const transformedProcesses = processesData.map(p => ({
+        const transformedProcesses: Process[] = processesData.map(p => ({
           id: p.id,
           type: p.type as ProcessType,
-          class: p.description || 'Classe I - Subsistência',
+          class: (p.description || 'Classe I - Subsistência') as ProcessClass,
           number: p.number,
           startDate: new Date(p.start_date),
           endDate: p.end_date ? new Date(p.end_date) : null,
-          assignedMilitaries: p.assigned_militaries || []
+          assignedMilitaries: (p.assigned_militaries as AssignedMilitary[]) || []
         }));
         setProcesses(transformedProcesses);
       }
@@ -95,7 +99,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           rank: military.rank,
           branch: military.branch,
           degree: military.degree,
-          last_process_date: military.lastProcessDate,
+          last_process_date: military.lastProcessDate?.toISOString() || null,
           process_history: {}
         })
         .select()
@@ -108,10 +112,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (data) {
-        const newMilitary = {
-          ...data,
+        const newMilitary: Military = {
+          id: data.id,
+          name: data.name,
+          rank: data.rank as Rank,
+          branch: data.branch,
+          degree: data.degree,
           lastProcessDate: data.last_process_date ? new Date(data.last_process_date) : null,
-          processHistory: data.process_history || {}
+          processHistory: (data.process_history as Record<string, Date | null>) || {}
         };
         setMilitaries(prev => [...prev, newMilitary]);
         toast.success(`Militar ${military.name} adicionado com sucesso`);
@@ -145,10 +153,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (data) {
-        const transformedMilitaries = data.map(m => ({
-          ...m,
+        const transformedMilitaries: Military[] = data.map(m => ({
+          id: m.id,
+          name: m.name,
+          rank: m.rank as Rank,
+          branch: m.branch,
+          degree: m.degree,
           lastProcessDate: m.last_process_date ? new Date(m.last_process_date) : null,
-          processHistory: m.process_history || {}
+          processHistory: (m.process_history as Record<string, Date | null>) || {}
         }));
         
         setMilitaries(prev => [...prev, ...transformedMilitaries]);
@@ -162,6 +174,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const updateMilitary = async (updatedMilitary: Military) => {
     try {
+      // Convert processHistory dates to ISO strings for storage
+      const processHistoryForStorage: Record<string, string | null> = {};
+      Object.entries(updatedMilitary.processHistory).forEach(([key, value]) => {
+        processHistoryForStorage[key] = value ? value.toISOString() : null;
+      });
+
       const { error } = await supabase
         .from('militaries')
         .update({
@@ -169,8 +187,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           rank: updatedMilitary.rank,
           branch: updatedMilitary.branch,
           degree: updatedMilitary.degree,
-          last_process_date: updatedMilitary.lastProcessDate,
-          process_history: updatedMilitary.processHistory
+          last_process_date: updatedMilitary.lastProcessDate?.toISOString() || null,
+          process_history: processHistoryForStorage
         })
         .eq('id', updatedMilitary.id);
 
@@ -235,8 +253,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           description: process.class,
           number: process.number,
           start_date: process.startDate.toISOString(),
-          end_date: process.endDate?.toISOString(),
-          assigned_militaries: process.assignedMilitaries
+          end_date: process.endDate?.toISOString() || null,
+          assigned_militaries: process.assignedMilitaries as any
         })
         .select()
         .single();
@@ -248,14 +266,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (data) {
-        const newProcess = {
+        const newProcess: Process = {
           id: data.id,
           type: data.type as ProcessType,
-          class: data.description || 'Classe I - Subsistência',
+          class: (data.description || 'Classe I - Subsistência') as ProcessClass,
           number: data.number,
           startDate: new Date(data.start_date),
           endDate: data.end_date ? new Date(data.end_date) : null,
-          assignedMilitaries: data.assigned_militaries || []
+          assignedMilitaries: (data.assigned_militaries as AssignedMilitary[]) || []
         };
         
         setProcesses(prev => [...prev, newProcess]);
@@ -273,11 +291,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             };
             
             // Update in database
+            const processHistoryForStorage: Record<string, string | null> = {};
+            Object.entries(processHistory).forEach(([key, value]) => {
+              processHistoryForStorage[key] = value ? value.toISOString() : null;
+            });
+
             supabase
               .from('militaries')
               .update({
                 last_process_date: process.startDate.toISOString(),
-                process_history: processHistory
+                process_history: processHistoryForStorage
               })
               .eq('id', military.id);
             
@@ -304,8 +327,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           description: updatedProcess.class,
           number: updatedProcess.number,
           start_date: updatedProcess.startDate.toISOString(),
-          end_date: updatedProcess.endDate?.toISOString(),
-          assigned_militaries: updatedProcess.assignedMilitaries
+          end_date: updatedProcess.endDate?.toISOString() || null,
+          assigned_militaries: updatedProcess.assignedMilitaries as any
         })
         .eq('id', updatedProcess.id);
 
