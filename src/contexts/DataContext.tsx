@@ -24,6 +24,36 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+// Helper functions for safe type conversion
+const convertProcessHistory = (processHistory: any): Record<string, Date | null> => {
+  if (!processHistory || typeof processHistory !== 'object') {
+    return {};
+  }
+  
+  const result: Record<string, Date | null> = {};
+  Object.entries(processHistory).forEach(([key, value]) => {
+    if (typeof value === 'string') {
+      result[key] = new Date(value);
+    } else {
+      result[key] = null;
+    }
+  });
+  return result;
+};
+
+const convertAssignedMilitaries = (assignedMilitaries: any): AssignedMilitary[] => {
+  if (!Array.isArray(assignedMilitaries)) {
+    return [];
+  }
+  
+  return assignedMilitaries.filter((item): item is AssignedMilitary => {
+    return item && 
+           typeof item === 'object' && 
+           typeof item.militaryId === 'string' && 
+           typeof item.function === 'string';
+  });
+};
+
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [militaries, setMilitaries] = useState<Military[]>([]);
   const [processes, setProcesses] = useState<Process[]>([]);
@@ -55,7 +85,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           branch: m.branch,
           degree: m.degree,
           lastProcessDate: m.last_process_date ? new Date(m.last_process_date) : null,
-          processHistory: (m.process_history as Record<string, Date | null>) || {}
+          processHistory: convertProcessHistory(m.process_history)
         }));
         setMilitaries(transformedMilitaries);
       }
@@ -77,7 +107,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           number: p.number,
           startDate: new Date(p.start_date),
           endDate: p.end_date ? new Date(p.end_date) : null,
-          assignedMilitaries: (p.assigned_militaries as AssignedMilitary[]) || []
+          assignedMilitaries: convertAssignedMilitaries(p.assigned_militaries)
         }));
         setProcesses(transformedProcesses);
       }
@@ -119,7 +149,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           branch: data.branch,
           degree: data.degree,
           lastProcessDate: data.last_process_date ? new Date(data.last_process_date) : null,
-          processHistory: (data.process_history as Record<string, Date | null>) || {}
+          processHistory: convertProcessHistory(data.process_history)
         };
         setMilitaries(prev => [...prev, newMilitary]);
         toast.success(`Militar ${military.name} adicionado com sucesso`);
@@ -160,7 +190,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           branch: m.branch,
           degree: m.degree,
           lastProcessDate: m.last_process_date ? new Date(m.last_process_date) : null,
-          processHistory: (m.process_history as Record<string, Date | null>) || {}
+          processHistory: convertProcessHistory(m.process_history)
         }));
         
         setMilitaries(prev => [...prev, ...transformedMilitaries]);
@@ -273,7 +303,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           number: data.number,
           startDate: new Date(data.start_date),
           endDate: data.end_date ? new Date(data.end_date) : null,
-          assignedMilitaries: (data.assigned_militaries as AssignedMilitary[]) || []
+          assignedMilitaries: convertAssignedMilitaries(data.assigned_militaries)
         };
         
         setProcesses(prev => [...prev, newProcess]);
