@@ -19,9 +19,10 @@ interface ImportCSVModalProps {
 }
 
 export default function ImportCSVModal({ open, onOpenChange }: ImportCSVModalProps) {
-  const { addMilitary } = useData();
+  const { addMilitariesFromCSV } = useData();
   const [file, setFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
+  const [importing, setImporting] = useState(false);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -46,33 +47,25 @@ export default function ImportCSVModal({ open, onOpenChange }: ImportCSVModalPro
     }
   };
   
-  const handleImport = () => {
+  const handleImport = async () => {
     if (previewData.length === 0) {
       toast.error("Nenhum dado para importar");
       return;
     }
     
-    let importedCount = 0;
+    setImporting(true);
     
-    previewData.forEach(military => {
-      try {
-        addMilitary({
-          name: military.name,
-          rank: military.rank,
-          branch: military.branch,
-          degree: military.degree,
-          lastProcessDate: null,
-        });
-        importedCount++;
-      } catch (error) {
-        console.error("Erro ao importar militar:", military, error);
-      }
-    });
-    
-    toast.success(`${importedCount} militares importados com sucesso`);
-    setFile(null);
-    setPreviewData([]);
-    onOpenChange(false);
+    try {
+      await addMilitariesFromCSV(previewData);
+      setFile(null);
+      setPreviewData([]);
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Erro ao importar militares:", error);
+      toast.error("Erro ao importar militares");
+    } finally {
+      setImporting(false);
+    }
   };
   
   return (
@@ -93,6 +86,7 @@ export default function ImportCSVModal({ open, onOpenChange }: ImportCSVModalPro
               accept=".csv"
               onChange={handleFileChange}
               className="w-full"
+              disabled={importing}
             />
           </div>
           
@@ -126,15 +120,19 @@ export default function ImportCSVModal({ open, onOpenChange }: ImportCSVModalPro
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={importing}
+          >
             Cancelar
           </Button>
           <Button 
             className="bg-military-navy hover:bg-military-navy/80 text-white"
             onClick={handleImport}
-            disabled={previewData.length === 0}
+            disabled={previewData.length === 0 || importing}
           >
-            Importar {previewData.length} Militares
+            {importing ? "Importando..." : `Importar ${previewData.length} Militares`}
           </Button>
         </DialogFooter>
       </DialogContent>

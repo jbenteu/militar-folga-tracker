@@ -1,24 +1,25 @@
+
 import React, { ReactNode, createContext, useContext, useState, useEffect } from 'react';
 import { Military, MilitaryWithRestTime, Process, ProcessType, AssignedMilitary, MilitaryFunction } from '@/types';
-import { initialMilitaries, initialProcesses } from '@/lib/mock-data';
 import { calculateRestDays } from '@/lib/utils';
-import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DataContextType {
   militaries: Military[];
   processes: Process[];
-  addMilitary: (military: Omit<Military, 'id' | 'processHistory'>) => void;
-  updateMilitary: (military: Military) => void;
-  deleteMilitary: (id: string) => void;
-  addProcess: (process: Omit<Process, 'id'>) => void;
-  updateProcess: (process: Process) => void;
-  deleteProcess: (id: string) => void;
+  loading: boolean;
+  addMilitary: (military: Omit<Military, 'id' | 'processHistory'>) => Promise<void>;
+  updateMilitary: (military: Military) => Promise<void>;
+  deleteMilitary: (id: string) => Promise<void>;
+  addProcess: (process: Omit<Process, 'id'>) => Promise<void>;
+  updateProcess: (process: Process) => Promise<void>;
+  deleteProcess: (id: string) => Promise<void>;
   getMilitariesWithRestTime: (processType?: ProcessType) => MilitaryWithRestTime[];
   getMilitaryById: (id: string) => Military | undefined;
   getProcessById: (id: string) => Process | undefined;
   getProcessesByType: (type: ProcessType) => Process[];
-  addMilitariesFromCSV: (militaries: Omit<Military, 'id' | 'lastProcessDate' | 'processHistory'>[]) => void;
+  addMilitariesFromCSV: (militaries: Omit<Military, 'id' | 'lastProcessDate' | 'processHistory'>[]) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -26,191 +27,324 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [militaries, setMilitaries] = useState<Military[]>([]);
   const [processes, setProcesses] = useState<Process[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Initialize or load from localStorage
+  // Load data from Supabase on mount
   useEffect(() => {
-    // Transform initial data for compatibility with new structure
-    const transformedInitialMilitaries = initialMilitaries.map(m => ({
-      ...m,
-      processHistory: {} as Record<string, Date | null>
-    }));
-
-    const transformedInitialProcesses = initialProcesses;
-
-    // Load from localStorage if available
-    const storedMilitaries = localStorage.getItem('militaries');
-    const storedProcesses = localStorage.getItem('processes');
-    
-    if (storedMilitaries) {
-      try {
-        const parsed = JSON.parse(storedMilitaries);
-        // Convert string dates back to Date objects
-        const militariesWithDates = parsed.map((m: any) => ({
-          ...m,
-          lastProcessDate: m.lastProcessDate ? new Date(m.lastProcessDate) : null,
-          processHistory: m.processHistory || {}
-        }));
-        
-        // Convert process history dates
-        militariesWithDates.forEach((m: any) => {
-          if (m.processHistory) {
-            Object.keys(m.processHistory).forEach(key => {
-              if (m.processHistory[key]) {
-                m.processHistory[key] = new Date(m.processHistory[key]);
-              }
-            });
-          }
-        });
-        
-        setMilitaries(militariesWithDates);
-      } catch (error) {
-        console.error('Failed to parse stored militaries', error);
-        setMilitaries(transformedInitialMilitaries);
-      }
-    } else {
-      setMilitaries(transformedInitialMilitaries);
-    }
-    
-    if (storedProcesses) {
-      try {
-        const parsed = JSON.parse(storedProcesses);
-        // Convert string dates back to Date objects
-        const processesWithDates = parsed.map((p: any) => ({
-          ...p,
-          startDate: new Date(p.startDate),
-          endDate: p.endDate ? new Date(p.endDate) : null
-        }));
-        setProcesses(processesWithDates);
-      } catch (error) {
-        console.error('Failed to parse stored processes', error);
-        setProcesses(transformedInitialProcesses);
-      }
-    } else {
-      setProcesses(transformedInitialProcesses);
-    }
+    loadData();
   }, []);
 
-  // Save to localStorage whenever data changes
-  useEffect(() => {
-    localStorage.setItem('militaries', JSON.stringify(militaries));
-  }, [militaries]);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Load militaries
+      const { data: militariesData, error: militariesError } = await supabase
+        .from('militaries')
+        .select('*')
+        .order('created_at', { ascending: true });
 
-  useEffect(() => {
-    localStorage.setItem('processes', JSON.stringify(processes));
-  }, [processes]);
+      if (militariesError) {
+        console.error('Error loading militaries:', militariesError);
+        toast.error('Erro ao carregar militares do banco de dados');
+      } else if (militariesData) {
+        const transformedMilitaries = militariesData.map(m => ({
+          ...m,
+          lastProcessDate: m.last_process_date ? new Date(m.last_process_date) : null,
+          processHistory: m.process_history || {}
+        }));
+        setMilitaries(transformedMilitaries);
+      }
+
+      // Load processes
+      const { data: processesData, error: processesError } = await supabase
+        .from('processes')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (processesError) {
+        console.error('Error loading processes:', processesError);
+        toast.error('Erro ao carregar processos do banco de dados');
+      } else if (processesData) {
+        const transformedProcesses = processesData.map(p => ({
+          id: p.id,
+          type: p.type as ProcessType,
+          class: p.description || 'Classe I - Subsistência',
+          number: p.number,
+          startDate: new Date(p.start_date),
+          endDate: p.end_date ? new Date(p.end_date) : null,
+          assignedMilitaries: p.assigned_militaries || []
+        }));
+        setProcesses(transformedProcesses);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Erro ao conectar com o banco de dados');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Military CRUD operations
-  const addMilitary = (military: Omit<Military, 'id' | 'processHistory'>) => {
-    const newMilitary = { 
-      ...military, 
-      id: uuidv4(),
-      processHistory: {} as Record<string, Date | null>
-    };
-    setMilitaries([...militaries, newMilitary]);
-    toast.success(`Militar ${military.name} adicionado com sucesso`);
-  };
+  const addMilitary = async (military: Omit<Military, 'id' | 'processHistory'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('militaries')
+        .insert({
+          name: military.name,
+          rank: military.rank,
+          branch: military.branch,
+          degree: military.degree,
+          last_process_date: military.lastProcessDate,
+          process_history: {}
+        })
+        .select()
+        .single();
 
-  const addMilitariesFromCSV = (newMilitaries: Omit<Military, 'id' | 'lastProcessDate' | 'processHistory'>[]) => {
-    const militariesToAdd = newMilitaries.map(m => ({
-      ...m,
-      id: uuidv4(),
-      lastProcessDate: null,
-      processHistory: {} as Record<string, Date | null>
-    }));
-    
-    setMilitaries([...militaries, ...militariesToAdd]);
-    toast.success(`${militariesToAdd.length} militares importados com sucesso`);
-  };
+      if (error) {
+        console.error('Error adding military:', error);
+        toast.error('Erro ao adicionar militar');
+        return;
+      }
 
-  const updateMilitary = (updatedMilitary: Military) => {
-    setMilitaries(militaries.map(m => 
-      m.id === updatedMilitary.id ? updatedMilitary : m
-    ));
-    toast.success(`Dados do militar ${updatedMilitary.name} atualizados`);
-  };
-
-  const deleteMilitary = (id: string) => {
-    // Check if the military is assigned to any process
-    const isAssigned = processes.some(process => 
-      process.assignedMilitaries.some(m => m.militaryId === id)
-    );
-
-    if (isAssigned) {
-      toast.error("Não é possível excluir este militar pois ele está designado em processos ativos.");
-      return;
+      if (data) {
+        const newMilitary = {
+          ...data,
+          lastProcessDate: data.last_process_date ? new Date(data.last_process_date) : null,
+          processHistory: data.process_history || {}
+        };
+        setMilitaries(prev => [...prev, newMilitary]);
+        toast.success(`Militar ${military.name} adicionado com sucesso`);
+      }
+    } catch (error) {
+      console.error('Error adding military:', error);
+      toast.error('Erro ao adicionar militar');
     }
+  };
 
-    const militaryToDelete = militaries.find(m => m.id === id);
-    setMilitaries(militaries.filter(m => m.id !== id));
-    
-    if (militaryToDelete) {
-      toast.success(`Militar ${militaryToDelete.name} removido com sucesso`);
+  const addMilitariesFromCSV = async (newMilitaries: Omit<Military, 'id' | 'lastProcessDate' | 'processHistory'>[]) => {
+    try {
+      const militariesToInsert = newMilitaries.map(m => ({
+        name: m.name,
+        rank: m.rank,
+        branch: m.branch,
+        degree: m.degree,
+        last_process_date: null,
+        process_history: {}
+      }));
+
+      const { data, error } = await supabase
+        .from('militaries')
+        .insert(militariesToInsert)
+        .select();
+
+      if (error) {
+        console.error('Error importing militaries:', error);
+        toast.error('Erro ao importar militares');
+        return;
+      }
+
+      if (data) {
+        const transformedMilitaries = data.map(m => ({
+          ...m,
+          lastProcessDate: m.last_process_date ? new Date(m.last_process_date) : null,
+          processHistory: m.process_history || {}
+        }));
+        
+        setMilitaries(prev => [...prev, ...transformedMilitaries]);
+        toast.success(`${data.length} militares importados com sucesso`);
+      }
+    } catch (error) {
+      console.error('Error importing militaries:', error);
+      toast.error('Erro ao importar militares');
+    }
+  };
+
+  const updateMilitary = async (updatedMilitary: Military) => {
+    try {
+      const { error } = await supabase
+        .from('militaries')
+        .update({
+          name: updatedMilitary.name,
+          rank: updatedMilitary.rank,
+          branch: updatedMilitary.branch,
+          degree: updatedMilitary.degree,
+          last_process_date: updatedMilitary.lastProcessDate,
+          process_history: updatedMilitary.processHistory
+        })
+        .eq('id', updatedMilitary.id);
+
+      if (error) {
+        console.error('Error updating military:', error);
+        toast.error('Erro ao atualizar militar');
+        return;
+      }
+
+      setMilitaries(prev => prev.map(m => 
+        m.id === updatedMilitary.id ? updatedMilitary : m
+      ));
+      toast.success(`Dados do militar ${updatedMilitary.name} atualizados`);
+    } catch (error) {
+      console.error('Error updating military:', error);
+      toast.error('Erro ao atualizar militar');
+    }
+  };
+
+  const deleteMilitary = async (id: string) => {
+    try {
+      // Check if the military is assigned to any process
+      const isAssigned = processes.some(process => 
+        process.assignedMilitaries.some(m => m.militaryId === id)
+      );
+
+      if (isAssigned) {
+        toast.error("Não é possível excluir este militar pois ele está designado em processos ativos.");
+        return;
+      }
+
+      const { error } = await supabase
+        .from('militaries')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting military:', error);
+        toast.error('Erro ao excluir militar');
+        return;
+      }
+
+      const militaryToDelete = militaries.find(m => m.id === id);
+      setMilitaries(prev => prev.filter(m => m.id !== id));
+      
+      if (militaryToDelete) {
+        toast.success(`Militar ${militaryToDelete.name} removido com sucesso`);
+      }
+    } catch (error) {
+      console.error('Error deleting military:', error);
+      toast.error('Erro ao excluir militar');
     }
   };
 
   // Process CRUD operations
-  const addProcess = (process: Omit<Process, 'id'>) => {
-    const newProcess = { ...process, id: uuidv4() };
-    setProcesses([...processes, newProcess]);
-    
-    // Update last process date for assigned militaries
-    const updatedMilitaries = militaries.map(military => {
-      if (process.assignedMilitaries.some(m => m.militaryId === military.id)) {
-        const processHistory = { ...military.processHistory };
-        processHistory[process.type] = process.startDate;
-        
-        return {
-          ...military,
-          lastProcessDate: process.startDate,
-          processHistory
-        };
+  const addProcess = async (process: Omit<Process, 'id'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('processes')
+        .insert({
+          type: process.type,
+          description: process.class,
+          number: process.number,
+          start_date: process.startDate.toISOString(),
+          end_date: process.endDate?.toISOString(),
+          assigned_militaries: process.assignedMilitaries
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding process:', error);
+        toast.error('Erro ao adicionar processo');
+        return;
       }
-      return military;
-    });
-    
-    setMilitaries(updatedMilitaries);
-    toast.success("Processo adicionado com sucesso");
-  };
 
-  const updateProcess = (updatedProcess: Process) => {
-    setProcesses(processes.map(p => 
-      p.id === updatedProcess.id ? updatedProcess : p
-    ));
-    
-    // Update last process date for newly assigned militaries
-    const currentProcess = processes.find(p => p.id === updatedProcess.id);
-    const currentAssignedIds = currentProcess 
-      ? currentProcess.assignedMilitaries.map(m => m.militaryId)
-      : [];
-      
-    const newlyAssignedIds = updatedProcess.assignedMilitaries
-      .map(m => m.militaryId)
-      .filter(id => !currentAssignedIds.includes(id));
-    
-    if (newlyAssignedIds.length > 0) {
-      const updatedMilitaries = militaries.map(military => {
-        if (newlyAssignedIds.includes(military.id)) {
-          const processHistory = { ...military.processHistory };
-          processHistory[updatedProcess.type] = updatedProcess.startDate;
-          
-          return {
-            ...military,
-            lastProcessDate: updatedProcess.startDate,
-            processHistory
-          };
-        }
-        return military;
-      });
-      
-      setMilitaries(updatedMilitaries);
+      if (data) {
+        const newProcess = {
+          id: data.id,
+          type: data.type as ProcessType,
+          class: data.description || 'Classe I - Subsistência',
+          number: data.number,
+          startDate: new Date(data.start_date),
+          endDate: data.end_date ? new Date(data.end_date) : null,
+          assignedMilitaries: data.assigned_militaries || []
+        };
+        
+        setProcesses(prev => [...prev, newProcess]);
+        
+        // Update last process date for assigned militaries
+        const updatedMilitaries = militaries.map(military => {
+          if (process.assignedMilitaries.some(m => m.militaryId === military.id)) {
+            const processHistory = { ...military.processHistory };
+            processHistory[process.type] = process.startDate;
+            
+            const updatedMilitary = {
+              ...military,
+              lastProcessDate: process.startDate,
+              processHistory
+            };
+            
+            // Update in database
+            supabase
+              .from('militaries')
+              .update({
+                last_process_date: process.startDate.toISOString(),
+                process_history: processHistory
+              })
+              .eq('id', military.id);
+            
+            return updatedMilitary;
+          }
+          return military;
+        });
+        
+        setMilitaries(updatedMilitaries);
+        toast.success("Processo adicionado com sucesso");
+      }
+    } catch (error) {
+      console.error('Error adding process:', error);
+      toast.error('Erro ao adicionar processo');
     }
-    
-    toast.success("Processo atualizado com sucesso");
   };
 
-  const deleteProcess = (id: string) => {
-    setProcesses(processes.filter(p => p.id !== id));
-    toast.success("Processo removido com sucesso");
+  const updateProcess = async (updatedProcess: Process) => {
+    try {
+      const { error } = await supabase
+        .from('processes')
+        .update({
+          type: updatedProcess.type,
+          description: updatedProcess.class,
+          number: updatedProcess.number,
+          start_date: updatedProcess.startDate.toISOString(),
+          end_date: updatedProcess.endDate?.toISOString(),
+          assigned_militaries: updatedProcess.assignedMilitaries
+        })
+        .eq('id', updatedProcess.id);
+
+      if (error) {
+        console.error('Error updating process:', error);
+        toast.error('Erro ao atualizar processo');
+        return;
+      }
+
+      setProcesses(prev => prev.map(p => 
+        p.id === updatedProcess.id ? updatedProcess : p
+      ));
+      
+      toast.success("Processo atualizado com sucesso");
+    } catch (error) {
+      console.error('Error updating process:', error);
+      toast.error('Erro ao atualizar processo');
+    }
+  };
+
+  const deleteProcess = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('processes')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting process:', error);
+        toast.error('Erro ao excluir processo');
+        return;
+      }
+
+      setProcesses(prev => prev.filter(p => p.id !== id));
+      toast.success("Processo removido com sucesso");
+    } catch (error) {
+      console.error('Error deleting process:', error);
+      toast.error('Erro ao excluir processo');
+    }
   };
 
   // Helper functions
@@ -247,6 +381,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     <DataContext.Provider value={{
       militaries,
       processes,
+      loading,
       addMilitary,
       updateMilitary,
       deleteMilitary,

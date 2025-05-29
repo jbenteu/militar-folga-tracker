@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -19,12 +20,12 @@ import {
 } from "@/components/ui/dialog";
 import { MilitaryGrade, Rank, RANKS_ORDER, getRankGrade } from "@/types";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import ImportCSVModal from "./ImportCSVModal";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function MilitaryList() {
-  const { militaries, deleteMilitary } = useData();
+  const { militaries, deleteMilitary, loading } = useData();
   const [openDialog, setOpenDialog] = useState(false);
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const [editingMilitary, setEditingMilitary] = useState<string | null>(null);
@@ -42,11 +43,20 @@ export function MilitaryList() {
     setOpenDialog(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm("Tem certeza que deseja excluir este militar?")) {
-      deleteMilitary(id);
+      await deleteMilitary(id);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Carregando dados...</span>
+      </div>
+    );
+  }
 
   // Apply filters
   let filteredMilitaries = militaries;

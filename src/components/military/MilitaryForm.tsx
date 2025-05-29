@@ -18,6 +18,7 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
   const [name, setName] = useState("");
   const [rank, setRank] = useState<Rank>("3º Sargento");
   const [branch, setBranch] = useState("Engenharia");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (militaryId) {
@@ -35,7 +36,7 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
     }
   }, [militaryId, getMilitaryById]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!name || !branch) {
@@ -43,31 +44,39 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
       return;
     }
     
-    // Automatically determine degree based on rank
-    const degree = getRankGrade(rank);
+    setSaving(true);
     
-    if (militaryId) {
-      const military = getMilitaryById(militaryId);
-      if (military) {
-        updateMilitary({
-          ...military,
+    try {
+      // Automatically determine degree based on rank
+      const degree = getRankGrade(rank);
+      
+      if (militaryId) {
+        const military = getMilitaryById(militaryId);
+        if (military) {
+          await updateMilitary({
+            ...military,
+            name,
+            rank,
+            branch,
+            degree,
+          });
+        }
+      } else {
+        await addMilitary({
           name,
           rank,
           branch,
           degree,
+          lastProcessDate: null,
         });
       }
-    } else {
-      addMilitary({
-        name,
-        rank,
-        branch,
-        degree,
-        lastProcessDate: null,
-      });
+      
+      onComplete();
+    } catch (error) {
+      console.error("Error saving military:", error);
+    } finally {
+      setSaving(false);
     }
-    
-    onComplete();
   };
 
   const branchOptions = [
@@ -94,12 +103,17 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              disabled={saving}
             />
           </div>
           
           <div className="space-y-2">
             <Label htmlFor="rank">Posto/Graduação</Label>
-            <Select value={rank} onValueChange={(value) => setRank(value as Rank)}>
+            <Select 
+              value={rank} 
+              onValueChange={(value) => setRank(value as Rank)}
+              disabled={saving}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o posto/graduação" />
               </SelectTrigger>
@@ -115,7 +129,11 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
           
           <div className="space-y-2">
             <Label htmlFor="branch">Arma</Label>
-            <Select value={branch} onValueChange={(value) => setBranch(value)}>
+            <Select 
+              value={branch} 
+              onValueChange={(value) => setBranch(value)}
+              disabled={saving}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione a arma" />
               </SelectTrigger>
@@ -130,11 +148,20 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
           </div>
           
           <div className="flex justify-end space-x-2 pt-2">
-            <Button type="button" variant="outline" onClick={onComplete}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onComplete}
+              disabled={saving}
+            >
               Cancelar
             </Button>
-            <Button type="submit" className="bg-military-blue hover:bg-military-navy">
-              {militaryId ? "Atualizar" : "Adicionar"}
+            <Button 
+              type="submit" 
+              className="bg-military-blue hover:bg-military-navy"
+              disabled={saving}
+            >
+              {saving ? "Salvando..." : (militaryId ? "Atualizar" : "Adicionar")}
             </Button>
           </div>
         </CardContent>
