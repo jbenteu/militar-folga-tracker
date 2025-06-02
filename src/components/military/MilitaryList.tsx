@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useData } from "@/contexts/DataContext";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2 } from "lucide-react";
-import MilitaryForm from "./MilitaryForm";
+import { MilitaryForm } from "./MilitaryForm";
 import ImportCSVModal from "./ImportCSVModal";
 import { formatDate, calculateRestDays, getRestTimeClass } from "@/lib/utils";
 import { Military, MilitaryGrade, Rank, RANKS_ORDER, getRankGrade } from "@/types";
