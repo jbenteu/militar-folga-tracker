@@ -1,3 +1,4 @@
+
 export type Rank = 
   | '3º Sargento' 
   | '2º Sargento' 
@@ -111,15 +112,15 @@ export interface MilitaryWithRestTime extends Military {
 export const getProcessMinMilitaries = (processType: ProcessType): number => {
   switch (processType) {
     case "Comissão de Conferência de Gêneros QR":
-      return 6; // Changed from 3 to 6
+      return 6; // Exactly 6 militaries
     case "Comissão de Conferência de Munição":
-      return 3;
+      return 3; // 3 or more militaries
     case "TEAM":
-      return 5;
+      return 3; // 3 or more militaries
     case "TREM":
-      return 5;
+      return 3; // 3 or more militaries
     case "PT":
-      return 3;
+      return 1; // 1 or more militaries
     default:
       return 3;
   }

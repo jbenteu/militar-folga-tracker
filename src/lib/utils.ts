@@ -1,4 +1,3 @@
-
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { Military, MilitaryWithRestTime, ProcessType, RANKS_ORDER, Rank, MilitaryGrade } from "@/types"
@@ -58,15 +57,15 @@ export function compareRanks(rank1: Rank, rank2: Rank): number {
 export const getProcessMinMilitaries = (processType: ProcessType): number => {
   switch (processType) {
     case "Comissão de Conferência de Gêneros QR":
-      return 6; // Changed from 3 to 6
+      return 6; // Exactly 6 militaries
     case "Comissão de Conferência de Munição":
-      return 3;
+      return 3; // 3 or more militaries
     case "TEAM":
-      return 5;
+      return 3; // 3 or more militaries
     case "TREM":
-      return 5;
+      return 3; // 3 or more militaries
     case "PT":
-      return 3;
+      return 1; // 1 or more militaries
     default:
       return 3;
   }
@@ -79,7 +78,12 @@ export function addMilitaryWithRestTime(militaries: Military[]): MilitaryWithRes
   }));
 }
 
-export function generateUniqueProcessNumber(): string {
+export function generateUniqueProcessNumber(processType?: ProcessType): string {
+  // For special process types, return empty string so user can input manually
+  if (processType === "TEAM" || processType === "TREM" || processType === "PT") {
+    return "";
+  }
+  
   const currentYear = new Date().getFullYear();
   const randomNumber = Math.floor(Math.random() * 900) + 100; // 3-digit random number
   return `${randomNumber}/${currentYear}`;

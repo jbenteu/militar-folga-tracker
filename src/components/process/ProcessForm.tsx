@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,9 +57,9 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   // Generate unique process number for new processes
   useEffect(() => {
     if (!processId) {
-      setNumber(generateUniqueProcessNumber());
+      setNumber(generateUniqueProcessNumber(type));
     }
-  }, [processId]);
+  }, [processId, type]);
   
   useEffect(() => {
     if (processId) {
@@ -117,8 +116,13 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
       // Set the end date to the last day of the month
       const lastDay = lastDayOfMonth(firstDay);
       setEndDate(lastDay);
+    } else {
+      // For TEAM, TREM, PT - set empty number so user inputs manually
+      if (!processId) {
+        setNumber("");
+      }
     }
-  }, [type, month, year]);
+  }, [type, month, year, processId]);
   
   const isSpecialProcessType = (type: ProcessType): boolean => {
     return type === "Comissão de Conferência de Gêneros QR" || type === "Comissão de Conferência de Munição";
@@ -140,9 +144,21 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
       return;
     }
     
-    const minMilitaries = getProcessMinMilitaries(type);
-    if (assignedMilitaries.length < minMilitaries) {
-      toast.error(`Este tipo de processo requer pelo menos ${minMilitaries} ${minMilitaries === 1 ? 'militar' : 'militares'}.`);
+    // Check if number is required and empty for non-special types
+    if (!isSpecialProcessType(type) && !number.trim()) {
+      toast.error("Por favor, insira o número do processo.");
+      return;
+    }
+    
+    // Special validation for "Comissão de Conferência de Gêneros QR" - exactly 6
+    if (type === "Comissão de Conferência de Gêneros QR" && assignedMilitaries.length !== 6) {
+      toast.error("Comissão de Conferência de Gêneros QR requer exatamente 6 militares.");
+      return;
+    }
+    
+    // For other processes, check minimum
+    if (type !== "Comissão de Conferência de Gêneros QR" && assignedMilitaries.length < getProcessMinMilitaries(type)) {
+      toast.error(`Este tipo de processo requer pelo menos ${getProcessMinMilitaries(type)} ${getProcessMinMilitaries(type) === 1 ? 'militar' : 'militares'}.`);
       return;
     }
     
@@ -196,9 +212,9 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   };
   
   const getDefaultMilitaryFunction = (processType: ProcessType): MilitaryFunction => {
-    const isSpecialType = isSpecialProcessType(processType);
+    const isSpecial = isSpecialProcessType(processType);
     
-    if (isSpecialType) {
+    if (isSpecial) {
       return 'Membro - Titular';
     } else {
       return 'Membro';
@@ -377,11 +393,12 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
                         </div>
                         
                         <div className="space-y-2">
-                          <Label htmlFor="number">Número</Label>
+                          <Label htmlFor="number">Número *</Label>
                           <Input
                             id="number"
                             value={number}
                             onChange={(e) => setNumber(e.target.value)}
+                            placeholder="Digite o número do processo"
                             required
                           />
                         </div>
@@ -451,10 +468,17 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-medium">Designação de Militares</h3>
-                    <span className={`text-sm ${assignedMilitaries.length < minMilitaries ? "text-red-500" : "text-green-600"}`}>
-                      {assignedMilitaries.length < minMilitaries 
-                        ? `Mínimo de ${minMilitaries} ${minMilitaries === 1 ? 'militar' : 'militares'}`
-                        : "Quantidade suficiente"}
+                    <span className={`text-sm ${
+                      type === "Comissão de Conferência de Gêneros QR" 
+                        ? (assignedMilitaries.length !== 6 ? "text-red-500" : "text-green-600")
+                        : (assignedMilitaries.length < minMilitaries ? "text-red-500" : "text-green-600")
+                    }`}>
+                      {type === "Comissão de Conferência de Gêneros QR" 
+                        ? (assignedMilitaries.length !== 6 ? "Exige exatamente 6 militares" : "Quantidade correta")
+                        : (assignedMilitaries.length < minMilitaries 
+                          ? `Mínimo de ${minMilitaries} ${minMilitaries === 1 ? 'militar' : 'militares'}`
+                          : "Quantidade suficiente")
+                      }
                     </span>
                   </div>
                 </div>
