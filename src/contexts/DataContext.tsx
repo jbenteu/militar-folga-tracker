@@ -1,4 +1,3 @@
-
 import React, { ReactNode, createContext, useContext, useState, useEffect } from 'react';
 import { Military, MilitaryWithRestTime, Process, ProcessType, AssignedMilitary, MilitaryFunction, Rank, ProcessClass, MilitaryGrade, RANKS_ORDER, getRankGrade } from '@/types';
 import { calculateRestDays } from '@/lib/utils';
@@ -59,6 +58,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [processes, setProcesses] = useState<Process[]>([]);
   const [loading, setLoading] = useState(true);
 
+  console.log('DataProvider initialized');
+
   // Load data from Supabase on mount
   useEffect(() => {
     loadData();
@@ -67,6 +68,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loadData = async () => {
     try {
       setLoading(true);
+      console.log('Loading data from Supabase...');
       
       // Load militaries
       const { data: militariesData, error: militariesError } = await supabase
@@ -92,6 +94,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           processHistory: convertProcessHistory(m.process_history)
         }));
         setMilitaries(transformedMilitaries);
+        console.log('Militaries loaded:', transformedMilitaries.length);
       }
 
       // Load processes
@@ -114,12 +117,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           assignedMilitaries: convertAssignedMilitaries(p.assigned_militaries)
         }));
         setProcesses(transformedProcesses);
+        console.log('Processes loaded:', transformedProcesses.length);
       }
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Erro ao conectar com o banco de dados');
     } finally {
       setLoading(false);
+      console.log('Data loading completed');
     }
   };
 
@@ -488,23 +493,25 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return processes.filter(p => p.type === type);
   };
 
+  const contextValue: DataContextType = {
+    militaries,
+    processes,
+    loading,
+    addMilitary,
+    updateMilitary,
+    deleteMilitary,
+    addProcess,
+    updateProcess,
+    deleteProcess,
+    getMilitariesWithRestTime,
+    getMilitaryById,
+    getProcessById,
+    getProcessesByType,
+    addMilitariesFromCSV
+  };
+
   return (
-    <DataContext.Provider value={{
-      militaries,
-      processes,
-      loading,
-      addMilitary,
-      updateMilitary,
-      deleteMilitary,
-      addProcess,
-      updateProcess,
-      deleteProcess,
-      getMilitariesWithRestTime,
-      getMilitaryById,
-      getProcessById,
-      getProcessesByType,
-      addMilitariesFromCSV
-    }}>
+    <DataContext.Provider value={contextValue}>
       {children}
     </DataContext.Provider>
   );
@@ -513,6 +520,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 export const useData = () => {
   const context = useContext(DataContext);
   if (context === undefined) {
+    console.error('useData must be used within a DataProvider');
     throw new Error('useData must be used within a DataProvider');
   }
   return context;
