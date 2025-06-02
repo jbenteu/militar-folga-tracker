@@ -1,4 +1,5 @@
-
+import React, { useState } from "react";
+import { useData } from "@/contexts/DataContext";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -8,21 +9,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useData } from "@/contexts/DataContext";
-import { formatDate, getRestTimeClass, calculateRestDays } from "@/lib/utils";
-import { useState } from "react";
-import { MilitaryForm } from "./MilitaryForm";
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { MilitaryGrade, Rank, RANKS_ORDER, getRankGrade } from "@/types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2 } from "lucide-react";
+import MilitaryForm from "./MilitaryForm";
 import ImportCSVModal from "./ImportCSVModal";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatDate, calculateRestDays, getRestTimeClass } from "@/lib/utils";
+import { Military, MilitaryGrade, Rank, RANKS_ORDER, getRankGrade } from "@/types";
 
 export function MilitaryList() {
   const { militaries, deleteMilitary, loading } = useData();

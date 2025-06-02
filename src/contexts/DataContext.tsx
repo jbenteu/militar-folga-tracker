@@ -1,5 +1,6 @@
+
 import React, { ReactNode, createContext, useContext, useState, useEffect } from 'react';
-import { Military, MilitaryWithRestTime, Process, ProcessType, AssignedMilitary, MilitaryFunction, Rank, ProcessClass } from '@/types';
+import { Military, MilitaryWithRestTime, Process, ProcessType, AssignedMilitary, MilitaryFunction, Rank, ProcessClass, MilitaryGrade, RANKS_ORDER, getRankGrade } from '@/types';
 import { calculateRestDays } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -82,7 +83,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           name: m.name,
           rank: m.rank as Rank,
           branch: m.branch,
-          degree: m.degree,
+          degree: getRankGrade(m.rank as Rank),
           squadron: m.squadron,
           warName: m.war_name,
           formationYear: m.formation_year,
@@ -154,7 +155,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           name: data.name,
           rank: data.rank as Rank,
           branch: data.branch,
-          degree: data.degree,
+          degree: getRankGrade(data.rank as Rank),
           squadron: data.squadron,
           warName: data.war_name,
           formationYear: data.formation_year,
@@ -203,7 +204,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           name: m.name,
           rank: m.rank as Rank,
           branch: m.branch,
-          degree: m.degree,
+          degree: getRankGrade(m.rank as Rank),
           squadron: m.squadron,
           warName: m.war_name,
           formationYear: m.formation_year,

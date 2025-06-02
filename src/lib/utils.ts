@@ -1,6 +1,7 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { Military, MilitaryWithRestTime, ProcessType, RANKS_ORDER, Rank } from "@/types"
+import { Military, MilitaryWithRestTime, ProcessType, RANKS_ORDER, Rank, MilitaryGrade } from "@/types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -98,14 +99,18 @@ export function parseCSVForMilitaries(csvText: string): Omit<Military, 'id' | 'l
       const name = cols[0].trim();
       const rank = cols[1].trim() as Rank;
       const branch = cols[2].trim();
-      const degree = cols[3].trim();
+      const squadron = cols[3].trim();
       
-      if (name && rank && branch && degree && RANKS_ORDER.includes(rank)) {
+      if (name && rank && branch && squadron && RANKS_ORDER.includes(rank)) {
+        const degree = ['Aspirante a Oficial', '2º Tenente', '1º Tenente', 'Capitão', 'Major'].includes(rank) ? 'Oficial' : 'Praça';
+        
         militaries.push({
           name,
           rank,
           branch,
-          degree
+          degree: degree as MilitaryGrade,
+          squadron,
+          isActive: true
         });
       }
     }
