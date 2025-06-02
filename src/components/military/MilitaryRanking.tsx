@@ -141,7 +141,15 @@ export function MilitaryRanking({ processType, onSelect, selectedIds = [] }: Mil
                     className={isSelected ? "bg-military-sand/30" : ""}
                   >
                     <TableCell>{military.rank}</TableCell>
-                    <TableCell>{military.name}</TableCell>
+                    <TableCell>
+                      {military.warName ? (
+                        <>
+                          {military.name} (<span className="font-bold">{military.warName}</span>)
+                        </>
+                      ) : (
+                        military.name
+                      )}
+                    </TableCell>
                     <TableCell>
                       {processType && military.processHistory?.[processType]
                         ? formatDate(military.processHistory[processType])

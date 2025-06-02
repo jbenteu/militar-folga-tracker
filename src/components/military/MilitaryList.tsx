@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useData } from "@/contexts/DataContext";
 import { Button } from "@/components/ui/button";
@@ -114,7 +113,7 @@ export function MilitaryList() {
     return yearB - yearA;
   });
 
-  const squadronOptions = ["Base Adm", "ECAp", "EHEG", "EHRA", "EM"];
+  const squadronOptions = ["Base Adm", "ECAp", "EHEG", "EHRA", "EM", "EMS"];
 
   return (
     <div className="space-y-4">
@@ -246,7 +245,13 @@ export function MilitaryList() {
                   return (
                     <TableRow key={military.id}>
                       <TableCell>
-                        {military.warName ? `${military.name} (${military.warName})` : military.name}
+                        {military.warName ? (
+                          <>
+                            {military.name} (<span className="font-bold">{military.warName}</span>)
+                          </>
+                        ) : (
+                          military.name
+                        )}
                       </TableCell>
                       <TableCell>{military.rank}</TableCell>
                       <TableCell>{military.squadron}</TableCell>
@@ -322,7 +327,13 @@ export function MilitaryList() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Nome de Guerra:</label>
-                  <p className="text-lg">{selectedMilitary.warName || "Não informado"}</p>
+                  <p className="text-lg">
+                    {selectedMilitary.warName ? (
+                      <span className="font-bold">{selectedMilitary.warName}</span>
+                    ) : (
+                      "Não informado"
+                    )}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Posto/Graduação:</label>

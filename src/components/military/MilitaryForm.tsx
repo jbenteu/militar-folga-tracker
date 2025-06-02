@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,7 +17,7 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
   const [name, setName] = useState("");
   const [rank, setRank] = useState<Rank>("3º Sargento");
   const [branch, setBranch] = useState("Engenharia");
-  const [squadron, setSquadron] = useState("Base Adm");
+  const [squadron, setSquadron] = useState("");
   const [warName, setWarName] = useState("");
   const [formationYear, setFormationYear] = useState<number | undefined>(undefined);
   const [isActive, setIsActive] = useState(true);
@@ -41,7 +40,7 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
       setName("");
       setRank("3º Sargento");
       setBranch("Engenharia");
-      setSquadron("Base Adm");
+      setSquadron("");
       setWarName("");
       setFormationYear(undefined);
       setIsActive(true);
@@ -117,7 +116,8 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
     "ECAp",
     "EHEG",
     "EHRA",
-    "EM"
+    "EM",
+    "EMS"
   ];
 
   return (
