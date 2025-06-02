@@ -1,4 +1,3 @@
-
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { Military, MilitaryWithRestTime, ProcessType, RANKS_ORDER, Rank } from "@/types"
@@ -55,9 +54,22 @@ export function compareRanks(rank1: Rank, rank2: Rank): number {
   return RANKS_ORDER.indexOf(rank1) - RANKS_ORDER.indexOf(rank2);
 }
 
-export function getProcessMinMilitaries(processType: string): number {
-  return processType === 'PT' ? 1 : 3;
-}
+export const getProcessMinMilitaries = (processType: ProcessType): number => {
+  switch (processType) {
+    case "Comissão de Conferência de Gêneros QR":
+      return 6; // Changed from 3 to 6
+    case "Comissão de Conferência de Munição":
+      return 3;
+    case "TEAM":
+      return 5;
+    case "TREM":
+      return 5;
+    case "PT":
+      return 3;
+    default:
+      return 3;
+  }
+};
 
 export function addMilitaryWithRestTime(militaries: Military[]): MilitaryWithRestTime[] {
   return militaries.map(military => ({

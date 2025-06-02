@@ -28,9 +28,13 @@ export function MilitaryList() {
   const { militaries, deleteMilitary, loading } = useData();
   const [openDialog, setOpenDialog] = useState(false);
   const [openImportDialog, setOpenImportDialog] = useState(false);
+  const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
   const [editingMilitary, setEditingMilitary] = useState<string | null>(null);
+  const [selectedMilitary, setSelectedMilitary] = useState<Military | null>(null);
   const [filterRank, setFilterRank] = useState<Rank | "">("");
   const [filterGrade, setFilterGrade] = useState<MilitaryGrade | "">("");
+  const [filterSquadron, setFilterSquadron] = useState<string>("");
+  const [filterActiveOnly, setFilterActiveOnly] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleEdit = (id: string) => {
@@ -41,6 +45,11 @@ export function MilitaryList() {
   const handleAdd = () => {
     setEditingMilitary(null);
     setOpenDialog(true);
+  };
+
+  const handleDetails = (military: Military) => {
+    setSelectedMilitary(military);
+    setOpenDetailsDialog(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -61,6 +70,11 @@ export function MilitaryList() {
   // Apply filters
   let filteredMilitaries = militaries;
   
+  // Filter by active status
+  if (filterActiveOnly) {
+    filteredMilitaries = filteredMilitaries.filter(m => m.isActive);
+  }
+  
   // Filter by rank if selected
   if (filterRank) {
     filteredMilitaries = filteredMilitaries.filter(m => m.rank === filterRank);
@@ -70,6 +84,11 @@ export function MilitaryList() {
   if (filterGrade) {
     filteredMilitaries = filteredMilitaries.filter(m => getRankGrade(m.rank) === filterGrade);
   }
+
+  // Filter by squadron if selected
+  if (filterSquadron) {
+    filteredMilitaries = filteredMilitaries.filter(m => m.squadron === filterSquadron);
+  }
   
   // Filter by search query
   if (searchQuery.trim()) {
@@ -78,16 +97,28 @@ export function MilitaryList() {
       m.name.toLowerCase().includes(query) || 
       m.rank.toLowerCase().includes(query) ||
       m.branch.toLowerCase().includes(query) ||
-      m.degree.toLowerCase().includes(query)
+      m.degree.toLowerCase().includes(query) ||
+      m.squadron.toLowerCase().includes(query) ||
+      (m.warName && m.warName.toLowerCase().includes(query))
     );
   }
   
-  // Sort by rank according to the defined order
+  // Sort by rank according to the defined order, then by formation year
   filteredMilitaries = [...filteredMilitaries].sort((a, b) => {
     const rankAIndex = RANKS_ORDER.indexOf(a.rank);
     const rankBIndex = RANKS_ORDER.indexOf(b.rank);
-    return rankAIndex - rankBIndex;
+    
+    if (rankAIndex !== rankBIndex) {
+      return rankAIndex - rankBIndex;
+    }
+    
+    // If same rank, sort by formation year (most recent first)
+    const yearA = a.formationYear || 0;
+    const yearB = b.formationYear || 0;
+    return yearB - yearA;
   });
+
+  const squadronOptions = ["Base Adm", "ECAp", "EHEG", "EHRA", "EM"];
 
   return (
     <div className="space-y-4">
@@ -108,7 +139,7 @@ export function MilitaryList() {
       </div>
 
       <div className="bg-white p-4 rounded-md shadow mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4 items-end">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
@@ -135,7 +166,7 @@ export function MilitaryList() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">Filtrar por Posto/Graduação:</label>
+            <label className="block text-sm font-medium mb-1">Posto/Graduação:</label>
             <select
               value={filterRank}
               onChange={(e) => setFilterRank(e.target.value as Rank | "")}
@@ -147,6 +178,31 @@ export function MilitaryList() {
               ))}
             </select>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Esquadrilha:</label>
+            <select
+              value={filterSquadron}
+              onChange={(e) => setFilterSquadron(e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-military-blue"
+            >
+              <option value="">Todas</option>
+              {squadronOptions.map((squadron) => (
+                <option key={squadron} value={squadron}>{squadron}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="filterActive"
+              checked={filterActiveOnly}
+              onChange={(e) => setFilterActiveOnly(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            <label htmlFor="filterActive" className="text-sm font-medium">Apenas ativos</label>
+          </div>
           
           <div className="flex items-end">
             <Button 
@@ -154,7 +210,9 @@ export function MilitaryList() {
               onClick={() => {
                 setFilterRank("");
                 setFilterGrade("");
+                setFilterSquadron("");
                 setSearchQuery("");
+                setFilterActiveOnly(true);
               }}
               className="w-full"
             >
@@ -169,8 +227,9 @@ export function MilitaryList() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Posto/Graduação</TableHead>
-                <TableHead>Grau</TableHead>
+                <TableHead>Esquadrilha</TableHead>
                 <TableHead>Arma</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Última Participação</TableHead>
                 <TableHead>Dias em Folga</TableHead>
                 <TableHead>Ações</TableHead>
@@ -179,7 +238,7 @@ export function MilitaryList() {
             <TableBody>
               {filteredMilitaries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
+                  <TableCell colSpan={8} className="text-center py-4">
                     Nenhum militar encontrado
                   </TableCell>
                 </TableRow>
@@ -190,16 +249,30 @@ export function MilitaryList() {
                   
                   return (
                     <TableRow key={military.id}>
-                      <TableCell>{military.name}</TableCell>
+                      <TableCell>
+                        {military.warName ? `${military.name} (${military.warName})` : military.name}
+                      </TableCell>
                       <TableCell>{military.rank}</TableCell>
-                      <TableCell>{getRankGrade(military.rank)}</TableCell>
+                      <TableCell>{military.squadron}</TableCell>
                       <TableCell>{military.branch}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded text-xs ${military.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                          {military.isActive ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </TableCell>
                       <TableCell>{formatDate(military.lastProcessDate)}</TableCell>
                       <TableCell className={restTimeClass}>
                         {restDays} {restDays === 1 ? 'dia' : 'dias'}
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleDetails(military)}
+                          >
+                            Detalhes
+                          </Button>
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -236,6 +309,60 @@ export function MilitaryList() {
             militaryId={editingMilitary}
             onComplete={() => setOpenDialog(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openDetailsDialog} onOpenChange={setOpenDetailsDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Militar</DialogTitle>
+          </DialogHeader>
+          {selectedMilitary && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Nome:</label>
+                  <p className="text-lg">{selectedMilitary.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Nome de Guerra:</label>
+                  <p className="text-lg">{selectedMilitary.warName || "Não informado"}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Posto/Graduação:</label>
+                  <p className="text-lg">{selectedMilitary.rank}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Grau:</label>
+                  <p className="text-lg">{selectedMilitary.degree}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Arma:</label>
+                  <p className="text-lg">{selectedMilitary.branch}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Esquadrilha:</label>
+                  <p className="text-lg">{selectedMilitary.squadron}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Ano de Formação:</label>
+                  <p className="text-lg">{selectedMilitary.formationYear || "Não informado"}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Status:</label>
+                  <p className="text-lg">
+                    <span className={`px-2 py-1 rounded text-sm ${selectedMilitary.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {selectedMilitary.isActive ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Última Participação:</label>
+                <p className="text-lg">{formatDate(selectedMilitary.lastProcessDate)}</p>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

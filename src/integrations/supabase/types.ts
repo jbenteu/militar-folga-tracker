@@ -14,34 +14,46 @@ export type Database = {
           branch: string
           created_at: string
           degree: string
+          formation_year: number | null
           id: string
+          is_active: boolean | null
           last_process_date: string | null
           name: string
           process_history: Json | null
           rank: string
+          squadron: string
           updated_at: string
+          war_name: string | null
         }
         Insert: {
           branch: string
           created_at?: string
           degree: string
+          formation_year?: number | null
           id?: string
+          is_active?: boolean | null
           last_process_date?: string | null
           name: string
           process_history?: Json | null
           rank: string
+          squadron: string
           updated_at?: string
+          war_name?: string | null
         }
         Update: {
           branch?: string
           created_at?: string
           degree?: string
+          formation_year?: number | null
           id?: string
+          is_active?: boolean | null
           last_process_date?: string | null
           name?: string
           process_history?: Json | null
           rank?: string
+          squadron?: string
           updated_at?: string
+          war_name?: string | null
         }
         Relationships: []
       }

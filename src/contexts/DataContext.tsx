@@ -1,4 +1,3 @@
-
 import React, { ReactNode, createContext, useContext, useState, useEffect } from 'react';
 import { Military, MilitaryWithRestTime, Process, ProcessType, AssignedMilitary, MilitaryFunction, Rank, ProcessClass } from '@/types';
 import { calculateRestDays } from '@/lib/utils';
@@ -84,6 +83,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           rank: m.rank as Rank,
           branch: m.branch,
           degree: m.degree,
+          squadron: m.squadron,
+          warName: m.war_name,
+          formationYear: m.formation_year,
+          isActive: m.is_active ?? true,
           lastProcessDate: m.last_process_date ? new Date(m.last_process_date) : null,
           processHistory: convertProcessHistory(m.process_history)
         }));
@@ -129,6 +132,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           rank: military.rank,
           branch: military.branch,
           degree: military.degree,
+          squadron: military.squadron,
+          war_name: military.warName || null,
+          formation_year: military.formationYear || null,
+          is_active: military.isActive,
           last_process_date: military.lastProcessDate?.toISOString() || null,
           process_history: {}
         })
@@ -148,6 +155,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           rank: data.rank as Rank,
           branch: data.branch,
           degree: data.degree,
+          squadron: data.squadron,
+          warName: data.war_name,
+          formationYear: data.formation_year,
+          isActive: data.is_active ?? true,
           lastProcessDate: data.last_process_date ? new Date(data.last_process_date) : null,
           processHistory: convertProcessHistory(data.process_history)
         };
@@ -167,6 +178,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         rank: m.rank,
         branch: m.branch,
         degree: m.degree,
+        squadron: m.squadron,
+        war_name: m.warName || null,
+        formation_year: m.formationYear || null,
+        is_active: m.isActive,
         last_process_date: null,
         process_history: {}
       }));
@@ -189,6 +204,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           rank: m.rank as Rank,
           branch: m.branch,
           degree: m.degree,
+          squadron: m.squadron,
+          warName: m.war_name,
+          formationYear: m.formation_year,
+          isActive: m.is_active ?? true,
           lastProcessDate: m.last_process_date ? new Date(m.last_process_date) : null,
           processHistory: convertProcessHistory(m.process_history)
         }));
@@ -217,6 +236,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           rank: updatedMilitary.rank,
           branch: updatedMilitary.branch,
           degree: updatedMilitary.degree,
+          squadron: updatedMilitary.squadron,
+          war_name: updatedMilitary.warName || null,
+          formation_year: updatedMilitary.formationYear || null,
+          is_active: updatedMilitary.isActive,
           last_process_date: updatedMilitary.lastProcessDate?.toISOString() || null,
           process_history: processHistoryForStorage
         })
@@ -402,20 +425,54 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Helper functions
   const getMilitariesWithRestTime = (processType?: ProcessType): MilitaryWithRestTime[] => {
-    return militaries.map(military => {
-      const generalRestDays = calculateRestDays(military.lastProcessDate);
-      let processTypeRestDays = generalRestDays;
-      
-      if (processType && military.processHistory) {
-        processTypeRestDays = calculateRestDays(military.processHistory[processType]);
-      }
-      
-      return {
-        ...military,
-        restDays: generalRestDays,
-        restDaysForProcessType: processType ? processTypeRestDays : undefined
-      };
-    });
+    return militaries
+      .filter(military => military.isActive) // Only show active militaries
+      .map(military => {
+        const generalRestDays = calculateRestDays(military.lastProcessDate);
+        let processTypeRestDays = generalRestDays;
+        
+        if (processType && military.processHistory) {
+          // Check for shared rest days for Conferência processes
+          if (processType === "Comissão de Conferência de Gêneros QR" || processType === "Comissão de Conferência de Munição") {
+            const conferenciaGenerosDate = military.processHistory["Comissão de Conferência de Gêneros QR"];
+            const conferenciaMunicaoDate = military.processHistory["Comissão de Conferência de Munição"];
+            
+            // Use the most recent date between the two processes
+            let mostRecentDate = null;
+            if (conferenciaGenerosDate && conferenciaMunicaoDate) {
+              mostRecentDate = conferenciaGenerosDate > conferenciaMunicaoDate ? conferenciaGenerosDate : conferenciaMunicaoDate;
+            } else if (conferenciaGenerosDate) {
+              mostRecentDate = conferenciaGenerosDate;
+            } else if (conferenciaMunicaoDate) {
+              mostRecentDate = conferenciaMunicaoDate;
+            }
+            
+            processTypeRestDays = calculateRestDays(mostRecentDate);
+          } else {
+            processTypeRestDays = calculateRestDays(military.processHistory[processType]);
+          }
+        }
+        
+        return {
+          ...military,
+          restDays: generalRestDays,
+          restDaysForProcessType: processType ? processTypeRestDays : undefined
+        };
+      })
+      .sort((a, b) => {
+        // Sort by rank first
+        const rankAIndex = RANKS_ORDER.indexOf(a.rank);
+        const rankBIndex = RANKS_ORDER.indexOf(b.rank);
+        
+        if (rankAIndex !== rankBIndex) {
+          return rankAIndex - rankBIndex;
+        }
+        
+        // If same rank, sort by formation year (most recent first)
+        const yearA = a.formationYear || 0;
+        const yearB = b.formationYear || 0;
+        return yearB - yearA;
+      });
   };
 
   const getMilitaryById = (id: string): Military | undefined => {

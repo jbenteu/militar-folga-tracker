@@ -18,6 +18,10 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
   const [name, setName] = useState("");
   const [rank, setRank] = useState<Rank>("3º Sargento");
   const [branch, setBranch] = useState("Engenharia");
+  const [squadron, setSquadron] = useState("Base Adm");
+  const [warName, setWarName] = useState("");
+  const [formationYear, setFormationYear] = useState<number | undefined>(undefined);
+  const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -27,19 +31,27 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
         setName(military.name);
         setRank(military.rank);
         setBranch(military.branch);
+        setSquadron(military.squadron);
+        setWarName(military.warName || "");
+        setFormationYear(military.formationYear);
+        setIsActive(military.isActive);
       }
     } else {
       // Reset form for new military
       setName("");
       setRank("3º Sargento");
       setBranch("Engenharia");
+      setSquadron("Base Adm");
+      setWarName("");
+      setFormationYear(undefined);
+      setIsActive(true);
     }
   }, [militaryId, getMilitaryById]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name || !branch) {
+    if (!name || !branch || !squadron) {
       alert("Por favor, preencha todos os campos obrigatórios.");
       return;
     }
@@ -59,6 +71,10 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
             rank,
             branch,
             degree,
+            squadron,
+            warName: warName || undefined,
+            formationYear,
+            isActive,
           });
         }
       } else {
@@ -67,6 +83,10 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
           rank,
           branch,
           degree,
+          squadron,
+          warName: warName || undefined,
+          formationYear,
+          isActive,
           lastProcessDate: null,
         });
       }
@@ -90,6 +110,14 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
     "Material Bélico",
     "Aviação",
     "Técnico Temporário"
+  ];
+
+  const squadronOptions = [
+    "Base Adm",
+    "ECAp",
+    "EHEG",
+    "EHRA",
+    "EM"
   ];
 
   return (
@@ -145,6 +173,61 @@ export function MilitaryForm({ militaryId, onComplete }: MilitaryFormProps) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="squadron">Esquadrilha</Label>
+            <Select 
+              value={squadron} 
+              onValueChange={(value) => setSquadron(value)}
+              disabled={saving}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a esquadrilha" />
+              </SelectTrigger>
+              <SelectContent>
+                {squadronOptions.map((squadronOption) => (
+                  <SelectItem key={squadronOption} value={squadronOption}>
+                    {squadronOption}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="warName">Nome de Guerra (opcional)</Label>
+            <Input
+              id="warName"
+              value={warName}
+              onChange={(e) => setWarName(e.target.value)}
+              disabled={saving}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="formationYear">Ano de Formação (opcional)</Label>
+            <Input
+              id="formationYear"
+              type="number"
+              value={formationYear || ""}
+              onChange={(e) => setFormationYear(e.target.value ? parseInt(e.target.value) : undefined)}
+              disabled={saving}
+              min="1950"
+              max="2030"
+            />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+              disabled={saving}
+              className="rounded border-gray-300"
+            />
+            <Label htmlFor="isActive">Militar ativo (disponível para escalas)</Label>
           </div>
           
           <div className="flex justify-end space-x-2 pt-2">

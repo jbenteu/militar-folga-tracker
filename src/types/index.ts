@@ -1,4 +1,3 @@
-
 export type Rank = 
   | '3º Sargento' 
   | '2º Sargento' 
@@ -80,11 +79,13 @@ export interface Military {
   name: string;
   rank: Rank;
   branch: string; // Arma
-  degree: string; // Grau
+  degree: MilitaryGrade;
+  squadron: string;
+  warName?: string;
+  formationYear?: number;
+  isActive: boolean;
   lastProcessDate: Date | null;
-  processHistory: {
-    [processType: string]: Date | null;
-  };
+  processHistory: Record<string, Date | null>;
 }
 
 export interface AssignedMilitary {
@@ -106,3 +107,20 @@ export interface MilitaryWithRestTime extends Military {
   restDays: number;
   restDaysForProcessType?: number;
 }
+
+export const getProcessMinMilitaries = (processType: ProcessType): number => {
+  switch (processType) {
+    case "Comissão de Conferência de Gêneros QR":
+      return 6; // Changed from 3 to 6
+    case "Comissão de Conferência de Munição":
+      return 3;
+    case "TEAM":
+      return 5;
+    case "TREM":
+      return 5;
+    case "PT":
+      return 3;
+    default:
+      return 3;
+  }
+};
