@@ -305,6 +305,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Process CRUD operations
   const addProcess = async (process: Omit<Process, 'id'>) => {
     try {
+      console.log('Adding process:', process);
+      
       const { data, error } = await supabase
         .from('processes')
         .insert({
@@ -337,38 +339,62 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         setProcesses(prev => [...prev, newProcess]);
         
-        // Update last process date for assigned militaries
-        const updatedMilitaries = militaries.map(military => {
-          if (process.assignedMilitaries.some(m => m.militaryId === military.id)) {
-            const processHistory = { ...military.processHistory };
-            processHistory[process.type] = process.startDate;
-            
-            const updatedMilitary = {
-              ...military,
-              lastProcessDate: process.startDate,
-              processHistory
-            };
-            
-            // Update in database
-            const processHistoryForStorage: Record<string, string | null> = {};
-            Object.entries(processHistory).forEach(([key, value]) => {
-              processHistoryForStorage[key] = value ? value.toISOString() : null;
-            });
+        // Update military history for each assigned military
+        const militariesToUpdate = process.assignedMilitaries.map(async (assigned) => {
+          const military = militaries.find(m => m.id === assigned.militaryId);
+          if (!military) return null;
+          
+          console.log(`Updating military ${military.name} for process ${process.type}`);
+          
+          // Update process history
+          const updatedProcessHistory = { ...military.processHistory };
+          updatedProcessHistory[process.type] = process.startDate;
+          
+          // Convert dates to ISO strings for database storage
+          const processHistoryForStorage: Record<string, string | null> = {};
+          Object.entries(updatedProcessHistory).forEach(([key, value]) => {
+            processHistoryForStorage[key] = value ? value.toISOString() : null;
+          });
 
-            supabase
-              .from('militaries')
-              .update({
-                last_process_date: process.startDate.toISOString(),
-                process_history: processHistoryForStorage
-              })
-              .eq('id', military.id);
-            
-            return updatedMilitary;
+          // Update in database
+          const { error: updateError } = await supabase
+            .from('militaries')
+            .update({
+              last_process_date: process.startDate.toISOString(),
+              process_history: processHistoryForStorage
+            })
+            .eq('id', military.id);
+
+          if (updateError) {
+            console.error(`Error updating military ${military.name}:`, updateError);
+            return null;
           }
-          return military;
+
+          console.log(`Successfully updated military ${military.name}`);
+          
+          // Return updated military for local state
+          return {
+            ...military,
+            lastProcessDate: process.startDate,
+            processHistory: updatedProcessHistory
+          };
         });
+
+        // Wait for all military updates to complete
+        const updatedMilitariesResults = await Promise.all(militariesToUpdate);
+        const successfulUpdates = updatedMilitariesResults.filter(Boolean);
         
-        setMilitaries(updatedMilitaries);
+        // Update local state with successful updates
+        if (successfulUpdates.length > 0) {
+          setMilitaries(prevMilitaries => 
+            prevMilitaries.map(military => {
+              const updatedMilitary = successfulUpdates.find(updated => updated && updated.id === military.id);
+              return updatedMilitary || military;
+            })
+          );
+          console.log(`Updated ${successfulUpdates.length} militaries in local state`);
+        }
+        
         toast.success("Processo adicionado com sucesso");
       }
     } catch (error) {
