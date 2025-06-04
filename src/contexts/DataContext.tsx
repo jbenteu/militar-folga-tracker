@@ -464,23 +464,41 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         let processTypeRestDays = generalRestDays;
         
         if (processType && military.processHistory) {
-          // Check for shared rest days for Conferência processes
-          if (processType === "Comissão de Conferência de Gêneros QR" || processType === "Comissão de Conferência de Munição") {
-            const conferenciaGenerosDate = military.processHistory["Comissão de Conferência de Gêneros QR"];
-            const conferenciaMunicaoDate = military.processHistory["Comissão de Conferência de Munição"];
+          // Check for shared rest days for TEAM, TREM, and PT processes
+          if (processType === "TEAM" || processType === "TREM" || processType === "PT") {
+            const teamDate = military.processHistory["TEAM"];
+            const tremDate = military.processHistory["TREM"];
+            const ptDate = military.processHistory["PT"];
             
-            // Use the most recent date between the two processes
+            // Use the most recent date among TEAM, TREM, and PT
             let mostRecentDate = null;
-            if (conferenciaGenerosDate && conferenciaMunicaoDate) {
-              mostRecentDate = conferenciaGenerosDate > conferenciaMunicaoDate ? conferenciaGenerosDate : conferenciaMunicaoDate;
-            } else if (conferenciaGenerosDate) {
-              mostRecentDate = conferenciaGenerosDate;
-            } else if (conferenciaMunicaoDate) {
-              mostRecentDate = conferenciaMunicaoDate;
+            if (teamDate && tremDate && ptDate) {
+              mostRecentDate = new Date(Math.max(teamDate.getTime(), tremDate.getTime(), ptDate.getTime()));
+            } else if (teamDate && tremDate) {
+              mostRecentDate = teamDate > tremDate ? teamDate : tremDate;
+            } else if (teamDate && ptDate) {
+              mostRecentDate = teamDate > ptDate ? teamDate : ptDate;
+            } else if (tremDate && ptDate) {
+              mostRecentDate = tremDate > ptDate ? tremDate : ptDate;
+            } else if (teamDate) {
+              mostRecentDate = teamDate;
+            } else if (tremDate) {
+              mostRecentDate = tremDate;
+            } else if (ptDate) {
+              mostRecentDate = ptDate;
             }
             
             processTypeRestDays = calculateRestDays(mostRecentDate);
-          } else {
+          } 
+          // Conferência processes have individualized rest days
+          else if (processType === "Comissão de Conferência de Gêneros QR") {
+            processTypeRestDays = calculateRestDays(military.processHistory["Comissão de Conferência de Gêneros QR"]);
+          }
+          else if (processType === "Comissão de Conferência de Munição") {
+            processTypeRestDays = calculateRestDays(military.processHistory["Comissão de Conferência de Munição"]);
+          }
+          else {
+            // For any other process type, use specific rest days
             processTypeRestDays = calculateRestDays(military.processHistory[processType]);
           }
         }
