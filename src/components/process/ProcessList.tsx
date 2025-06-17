@@ -23,6 +23,7 @@ import { Input } from "../ui/input";
 import { Search } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { ScrollArea } from "../ui/scroll-area";
+import { SyncProcessHistoryButton } from "./SyncProcessHistoryButton";
 
 interface ProcessListProps {
   processType?: ProcessType;
@@ -45,7 +46,7 @@ export function ProcessList({ processType }: ProcessListProps) {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm("Tem certeza que deseja excluir este processo?")) {
+    if (window.confirm("Tem certeza que deseja excluir este processo? As folgas dos militares serão restauradas automaticamente.")) {
       deleteProcess(id);
     }
   };
@@ -95,12 +96,15 @@ export function ProcessList({ processType }: ProcessListProps) {
         <h2 className="text-2xl font-bold text-military-navy">
           {processType ? `Processos: ${processType}` : 'Lista de Processos'}
         </h2>
-        <Button 
-          onClick={handleAdd} 
-          className="bg-military-blue hover:bg-military-navy"
-        >
-          Adicionar Processo {processType ? `(${processType})` : ''}
-        </Button>
+        <div className="flex space-x-2">
+          <SyncProcessHistoryButton />
+          <Button 
+            onClick={handleAdd} 
+            className="bg-military-blue hover:bg-military-navy"
+          >
+            Adicionar Processo {processType ? `(${processType})` : ''}
+          </Button>
+        </div>
       </div>
 
       <div className="bg-white p-4 rounded-md shadow mb-4">
