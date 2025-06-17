@@ -135,11 +135,35 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('Starting process history synchronization...');
       
       const updatedMilitaries = militaries.map(military => {
-        const newProcessHistory: Record<string, Date | null> = { ...military.processHistory };
+        const newProcessHistory: Record<string, Date | null> = {};
         let hasChanges = false;
-        let mostRecentProcessDate = military.lastProcessDate;
+        let mostRecentProcessDate: Date | null = null;
 
-        // Check each process to see if this military is assigned
+        // First, identify all valid process types from existing processes
+        const validProcessTypes = new Set(processes.map(process => process.type));
+        
+        console.log(`Valid process types: ${Array.from(validProcessTypes).join(', ')}`);
+
+        // Check if military has any process types in history that no longer exist
+        Object.keys(military.processHistory).forEach(processType => {
+          const currentHistoryDate = military.processHistory[processType];
+          
+          // Check if this process type still exists in our processes
+          const hasValidProcessOfType = processes.some(process => 
+            process.type === processType && 
+            process.assignedMilitaries.some(assigned => assigned.militaryId === military.id)
+          );
+
+          if (!hasValidProcessOfType && currentHistoryDate) {
+            console.log(`Removing invalid process type ${processType} from ${military.name}'s history`);
+            hasChanges = true;
+          } else if (hasValidProcessOfType && currentHistoryDate) {
+            // Keep valid process types
+            newProcessHistory[processType] = currentHistoryDate;
+          }
+        });
+
+        // Now check each existing process to update or add to history
         processes.forEach(process => {
           const isAssigned = process.assignedMilitaries.some(assigned => assigned.militaryId === military.id);
           
@@ -156,12 +180,22 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             // Update the most recent process date
             if (!mostRecentProcessDate || process.startDate > mostRecentProcessDate) {
               mostRecentProcessDate = process.startDate;
-              hasChanges = true;
             }
           }
         });
 
+        // Check if mostRecentProcessDate changed
+        if (military.lastProcessDate?.getTime() !== mostRecentProcessDate?.getTime()) {
+          hasChanges = true;
+        }
+
         if (hasChanges) {
+          console.log(`Process history changes detected for ${military.name}`);
+          console.log(`Old history:`, military.processHistory);
+          console.log(`New history:`, newProcessHistory);
+          console.log(`Old last process date:`, military.lastProcessDate);
+          console.log(`New last process date:`, mostRecentProcessDate);
+          
           return {
             ...military,
             processHistory: newProcessHistory,
@@ -175,35 +209,40 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Update database for changed militaries
       const militariesToUpdate = updatedMilitaries.filter((military, index) => {
         const original = militaries[index];
-        return JSON.stringify(military.processHistory) !== JSON.stringify(original.processHistory) ||
-               military.lastProcessDate?.getTime() !== original.lastProcessDate?.getTime();
+        const historyChanged = JSON.stringify(military.processHistory) !== JSON.stringify(original.processHistory);
+        const dateChanged = military.lastProcessDate?.getTime() !== original.lastProcessDate?.getTime();
+        return historyChanged || dateChanged;
       });
 
       console.log(`Updating ${militariesToUpdate.length} militaries in database...`);
 
-      const updatePromises = militariesToUpdate.map(async (military) => {
-        const processHistoryForStorage: Record<string, string | null> = {};
-        Object.entries(military.processHistory).forEach(([key, value]) => {
-          processHistoryForStorage[key] = value ? value.toISOString() : null;
+      if (militariesToUpdate.length > 0) {
+        const updatePromises = militariesToUpdate.map(async (military) => {
+          const processHistoryForStorage: Record<string, string | null> = {};
+          Object.entries(military.processHistory).forEach(([key, value]) => {
+            processHistoryForStorage[key] = value ? value.toISOString() : null;
+          });
+
+          console.log(`Updating military ${military.name} with new process history:`, processHistoryForStorage);
+
+          const { error } = await supabase
+            .from('militaries')
+            .update({
+              last_process_date: military.lastProcessDate?.toISOString() || null,
+              process_history: processHistoryForStorage
+            })
+            .eq('id', military.id);
+
+          if (error) {
+            console.error(`Error updating military ${military.name}:`, error);
+            return null;
+          }
+          
+          return military;
         });
 
-        const { error } = await supabase
-          .from('militaries')
-          .update({
-            last_process_date: military.lastProcessDate?.toISOString() || null,
-            process_history: processHistoryForStorage
-          })
-          .eq('id', military.id);
-
-        if (error) {
-          console.error(`Error updating military ${military.name}:`, error);
-          return null;
-        }
-        
-        return military;
-      });
-
-      await Promise.all(updatePromises);
+        await Promise.all(updatePromises);
+      }
       
       // Update local state
       setMilitaries(updatedMilitaries);
