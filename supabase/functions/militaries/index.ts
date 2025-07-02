@@ -117,12 +117,49 @@ Deno.serve(async (req) => {
           throw new Error('Military ID is required for delete')
         }
 
-        const { error } = await supabase
+        console.log(`Attempting to delete military with ID: ${militaryId}`)
+
+        // First check if military is assigned to any active processes
+        const { data: processes, error: processError } = await supabase
+          .from('processes')
+          .select('assigned_militaries')
+
+        if (processError) {
+          console.error('Error checking processes:', processError)
+          throw new Error('Erro ao verificar processos ativos')
+        }
+
+        // Check if military is assigned to any process
+        const isAssigned = processes?.some((process: any) => {
+          if (process.assigned_militaries && Array.isArray(process.assigned_militaries)) {
+            return process.assigned_militaries.some((assigned: any) => 
+              assigned && assigned.militaryId === militaryId
+            )
+          }
+          return false
+        })
+
+        if (isAssigned) {
+          return new Response(JSON.stringify({ 
+            error: 'Não é possível excluir este militar pois ele está designado em processos ativos.' 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Proceed with deletion
+        const { error: deleteError } = await supabase
           .from('militaries')
           .delete()
           .eq('id', militaryId)
 
-        if (error) throw error
+        if (deleteError) {
+          console.error('Error deleting military:', deleteError)
+          throw new Error(`Erro ao excluir militar: ${deleteError.message}`)
+        }
+
+        console.log(`Successfully deleted military with ID: ${militaryId}`)
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
@@ -134,7 +171,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error in militaries function:', error)
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
+      status: error.message.includes('não é possível excluir') ? 400 : 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }

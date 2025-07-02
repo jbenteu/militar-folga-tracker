@@ -278,12 +278,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const deleteMilitary = async (id: string) => {
     try {
-      const isAssigned = processes.some(process => 
-        process.assignedMilitaries.some(m => m.militaryId === id)
-      );
-
-      if (isAssigned) {
-        toast.error("Não é possível excluir este militar pois ele está designado em processos ativos.");
+      console.log('Attempting to delete military:', id);
+      
+      const militaryToDelete = militaries.find(m => m.id === id);
+      if (!militaryToDelete) {
+        toast.error("Militar não encontrado");
         return;
       }
 
@@ -291,15 +290,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         method: 'DELETE'
       });
 
-      const militaryToDelete = militaries.find(m => m.id === id);
       setMilitaries(prev => prev.filter(m => m.id !== id));
+      toast.success(`Militar ${militaryToDelete.name} removido com sucesso`);
       
-      if (militaryToDelete) {
-        toast.success(`Militar ${militaryToDelete.name} removido com sucesso`);
-      }
     } catch (error) {
       console.error('Error deleting military:', error);
-      toast.error('Erro ao excluir militar');
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao excluir militar';
+      toast.error(errorMessage);
     }
   };
 
