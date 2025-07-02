@@ -1,3 +1,4 @@
+
 import React, { ReactNode, createContext, useContext, useState, useEffect } from 'react';
 import { Military, MilitaryWithRestTime, Process, ProcessType, AssignedMilitary, MilitaryFunction, Rank, ProcessClass, MilitaryGrade, RANKS_ORDER, getRankGrade } from '@/types';
 import { calculateRestDays } from '@/lib/utils';
@@ -23,8 +24,9 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// Base URL for edge functions
-const FUNCTIONS_URL = 'https://tghmaigxcrnhyjzvjpvc.supabase.co/functions/v1';
+// Base URL for edge functions - using the correct Supabase project URL
+const SUPABASE_PROJECT_URL = 'https://tghmaigxcrnhyjzvjpvc.supabase.co';
+const FUNCTIONS_URL = `${SUPABASE_PROJECT_URL}/functions/v1`;
 
 // Helper functions for API calls
 const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
@@ -302,7 +304,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log(`Calling delete endpoint for military: ${militaryToDelete.name}`);
       
-      const result = await makeRequest(`/militaries?id=${id}`, {
+      const result = await makeRequest(`/militaries?id=${encodeURIComponent(id)}`, {
         method: 'DELETE'
       });
 
