@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +54,7 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   const [activeTab, setActiveTab] = useState<string>("details");
   const [month, setMonth] = useState<string>("01");
   const [year, setYear] = useState<string>("2025");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Generate unique process number for new processes
   useEffect(() => {
@@ -136,8 +138,21 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
     }
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isSubmitting) {
+      return;
+    }
+
+    console.log('Submitting process with data:', {
+      type,
+      processClass,
+      number,
+      startDate,
+      endDate,
+      assignedMilitaries
+    });
     
     if ((!isSpecialProcessType(type) && !processClass) || !startDate) {
       toast.error("Por favor, preencha todos os campos obrigatórios.");
@@ -169,31 +184,42 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
       return;
     }
     
-    if (processId) {
-      updateProcess({
-        id: processId,
-        type,
-        class: isSpecialProcessType(type) ? PROCESS_CLASSES[0] : processClass,
-        number,
-        startDate,
-        endDate: endDate || startDate,
-        assignedMilitaries,
-      });
-    } else {
-      addProcess({
-        type,
-        class: isSpecialProcessType(type) ? PROCESS_CLASSES[0] : processClass,
-        number,
-        startDate,
-        endDate: endDate || startDate,
-        assignedMilitaries,
-      });
-    }
+    setIsSubmitting(true);
     
-    onComplete();
+    try {
+      if (processId) {
+        await updateProcess({
+          id: processId,
+          type,
+          class: isSpecialProcessType(type) ? PROCESS_CLASSES[0] : processClass,
+          number,
+          startDate,
+          endDate: endDate || startDate,
+          assignedMilitaries,
+        });
+      } else {
+        await addProcess({
+          type,
+          class: isSpecialProcessType(type) ? PROCESS_CLASSES[0] : processClass,
+          number,
+          startDate,
+          endDate: endDate || startDate,
+          assignedMilitaries,
+        });
+      }
+      
+      onComplete();
+    } catch (error) {
+      console.error('Error submitting process:', error);
+      toast.error('Erro ao salvar processo. Tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const handleSelectMilitary = (militaryId: string) => {
+    console.log('Selecting military:', militaryId);
+    
     setSelectedMilitaryIds((current) => {
       if (current.includes(militaryId)) {
         // Remove from selected and assigned
@@ -222,6 +248,7 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   };
   
   const handleChangeFunction = (militaryId: string, func: MilitaryFunction) => {
+    console.log('Changing function for military:', militaryId, 'to:', func);
     setAssignedMilitaries(prev => 
       prev.map(m => m.militaryId === militaryId ? { ...m, function: func } : m)
     );
@@ -524,6 +551,7 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
                                   variant="destructive" 
                                   size="sm"
                                   onClick={() => handleSelectMilitary(assigned.militaryId)}
+                                  type="button"
                                 >
                                   Remover
                                 </Button>
@@ -550,11 +578,15 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
         
         <CardContent className="space-y-4 pt-0">
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={onComplete}>
+            <Button type="button" variant="outline" onClick={onComplete} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-military-blue hover:bg-military-navy">
-              {processId ? "Atualizar" : "Adicionar"}
+            <Button 
+              type="submit" 
+              className="bg-military-blue hover:bg-military-navy"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Salvando..." : (processId ? "Atualizar" : "Salvar")}
             </Button>
           </div>
         </CardContent>
