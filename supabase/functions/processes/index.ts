@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
 const corsHeaders = {
@@ -36,19 +35,18 @@ Deno.serve(async (req) => {
     )
 
     const url = new URL(req.url)
-    const method = req.method
-    const processId = url.searchParams.get('id')
+    const id = url.searchParams.get('id')
 
-    console.log(`Processing ${method} request for processes`)
+    console.log(`Processing ${req.method} request for processes`)
 
-    switch (method) {
+    switch (req.method) {
       case 'GET': {
-        if (processId) {
+        if (id) {
           // Get single process
           const { data, error } = await supabase
             .from('processes')
             .select('*')
-            .eq('id', processId)
+            .eq('id', id)
             .single()
 
           if (error) throw error
@@ -71,60 +69,98 @@ Deno.serve(async (req) => {
 
       case 'POST': {
         const body = await req.json()
+        console.log('Creating process with data:', body)
         
-        // Create process
-        const { data: processData, error: processError } = await supabase
-          .from('processes')
-          .insert(body)
-          .select()
-          .single()
-
-        if (processError) throw processError
-
-        // Update military history for assigned militaries
-        if (body.assigned_militaries && Array.isArray(body.assigned_militaries)) {
-          const militaryUpdates = body.assigned_militaries.map(async (assigned: any) => {
-            const { data: military, error: getMilitaryError } = await supabase
-              .from('militaries')
-              .select('*')
-              .eq('id', assigned.militaryId)
-              .single()
-
-            if (getMilitaryError || !military) return null
-
-            const updatedProcessHistory = { ...military.process_history }
-            updatedProcessHistory[body.type] = body.start_date
-
-            const processHistoryForStorage: Record<string, string | null> = {}
-            Object.entries(updatedProcessHistory).forEach(([key, value]) => {
-              processHistoryForStorage[key] = value ? new Date(value as string).toISOString() : null
-            })
-
-            const { error: updateError } = await supabase
-              .from('militaries')
-              .update({
-                last_process_date: body.start_date,
-                process_history: processHistoryForStorage
-              })
-              .eq('id', assigned.militaryId)
-
-            if (updateError) {
-              console.error(`Error updating military ${assigned.militaryId}:`, updateError)
-            }
-
-            return assigned.militaryId
+        // Enhanced validation
+        if (!body.type || !body.number || !body.start_date) {
+          console.error('Missing required fields:', { type: body.type, number: body.number, start_date: body.start_date })
+          return new Response(JSON.stringify({ 
+            error: 'Missing required fields: type, number, and start_date are required' 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           })
-
-          await Promise.all(militaryUpdates)
         }
 
-        return new Response(JSON.stringify(processData), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
+        // Validate assigned_militaries format
+        if (body.assigned_militaries && !Array.isArray(body.assigned_militaries)) {
+          console.error('Invalid assigned_militaries format:', body.assigned_militaries)
+          return new Response(JSON.stringify({ 
+            error: 'assigned_militaries must be an array' 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Validate each assigned military
+        if (body.assigned_militaries) {
+          for (const assigned of body.assigned_militaries) {
+            if (!assigned.militaryId || !assigned.function) {
+              console.error('Invalid assigned military:', assigned)
+              return new Response(JSON.stringify({ 
+                error: 'Each assigned military must have militaryId and function' 
+              }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              })
+            }
+          }
+        }
+
+        try {
+          const { data, error } = await supabase
+            .from('processes')
+            .insert({
+              type: body.type,
+              description: body.description || null,
+              number: body.number.trim(),
+              start_date: body.start_date,
+              end_date: body.end_date || null,
+              assigned_militaries: body.assigned_militaries || [],
+              status: 'active'
+            })
+            .select()
+            .single()
+
+          if (error) {
+            console.error('Database error creating process:', error)
+            
+            // Handle specific database errors
+            let errorMessage = 'Failed to create process'
+            if (error.message.includes('duplicate key')) {
+              errorMessage = 'A process with this number already exists'
+            } else if (error.message.includes('violates check constraint')) {
+              errorMessage = 'Invalid data provided'
+            }
+            
+            return new Response(JSON.stringify({ 
+              error: errorMessage,
+              details: error.message 
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            })
+          }
+
+          console.log('Process created successfully:', data)
+          return new Response(JSON.stringify(data), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        } catch (dbError: any) {
+          console.error('Unexpected database error:', dbError)
+          return new Response(JSON.stringify({ 
+            error: 'Database operation failed',
+            details: dbError.message 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
       }
 
       case 'PUT': {
-        if (!processId) {
+        if (!id) {
           throw new Error('Process ID is required for update')
         }
 
@@ -132,7 +168,7 @@ Deno.serve(async (req) => {
         const { data, error } = await supabase
           .from('processes')
           .update(body)
-          .eq('id', processId)
+          .eq('id', id)
           .select()
           .single()
 
@@ -143,7 +179,7 @@ Deno.serve(async (req) => {
       }
 
       case 'DELETE': {
-        if (!processId) {
+        if (!id) {
           throw new Error('Process ID is required for delete')
         }
 
@@ -151,7 +187,7 @@ Deno.serve(async (req) => {
         const { data: processToDelete, error: getError } = await supabase
           .from('processes')
           .select('*')
-          .eq('id', processId)
+          .eq('id', id)
           .single()
 
         if (getError) throw getError
@@ -160,7 +196,7 @@ Deno.serve(async (req) => {
         const { error: deleteError } = await supabase
           .from('processes')
           .delete()
-          .eq('id', processId)
+          .eq('id', id)
 
         if (deleteError) throw deleteError
 
@@ -224,12 +260,15 @@ Deno.serve(async (req) => {
       }
 
       default:
-        throw new Error(`Method ${method} not allowed`)
+        throw new Error(`Method ${req.method} not allowed`)
     }
-  } catch (error) {
-    console.error('Error in processes function:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
+  } catch (error: any) {
+    console.error('Process function error:', error)
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      details: error.message 
+    }), {
+      status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }

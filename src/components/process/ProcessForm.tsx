@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -154,6 +153,7 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
       assignedMilitaries
     });
     
+    // Enhanced validation
     if ((!isSpecialProcessType(type) && !processClass) || !startDate) {
       toast.error("Por favor, preencha todos os campos obrigatórios.");
       return;
@@ -162,6 +162,12 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
     // Check if number is required and empty for non-special types
     if (!isSpecialProcessType(type) && !number.trim()) {
       toast.error("Por favor, insira o número do processo.");
+      return;
+    }
+    
+    // Validate assigned militaries
+    if (assignedMilitaries.length === 0) {
+      toast.error("Por favor, designe pelo menos um militar para o processo.");
       return;
     }
     
@@ -183,35 +189,66 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
       toast.error("Todos os militares designados devem ter uma função atribuída.");
       return;
     }
+
+    // Validate that all assigned militaries exist
+    const invalidMilitaries = assignedMilitaries.filter(assigned => 
+      !militaries.some(military => military.id === assigned.militaryId)
+    );
+    
+    if (invalidMilitaries.length > 0) {
+      console.error('Invalid militaries found:', invalidMilitaries);
+      toast.error("Alguns militares selecionados não são válidos. Recarregue a página e tente novamente.");
+      return;
+    }
     
     setIsSubmitting(true);
     
     try {
+      const processData = {
+        type,
+        class: isSpecialProcessType(type) ? PROCESS_CLASSES[0] : processClass,
+        number: number.trim(),
+        startDate,
+        endDate: endDate || startDate,
+        assignedMilitaries: assignedMilitaries.map(assigned => ({
+          militaryId: assigned.militaryId,
+          function: assigned.function
+        })),
+      };
+
+      console.log('Final process data to submit:', processData);
+      
       if (processId) {
         await updateProcess({
           id: processId,
-          type,
-          class: isSpecialProcessType(type) ? PROCESS_CLASSES[0] : processClass,
-          number,
-          startDate,
-          endDate: endDate || startDate,
-          assignedMilitaries,
+          ...processData
         });
+        toast.success("Processo atualizado com sucesso!");
       } else {
-        await addProcess({
-          type,
-          class: isSpecialProcessType(type) ? PROCESS_CLASSES[0] : processClass,
-          number,
-          startDate,
-          endDate: endDate || startDate,
-          assignedMilitaries,
-        });
+        await addProcess(processData);
+        toast.success("Processo criado com sucesso!");
       }
       
       onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting process:', error);
-      toast.error('Erro ao salvar processo. Tente novamente.');
+      
+      // Enhanced error handling
+      let errorMessage = 'Erro ao salvar processo. Tente novamente.';
+      
+      if (error.message) {
+        if (error.message.includes('duplicate key')) {
+          errorMessage = 'Já existe um processo com este número. Escolha um número diferente.';
+        } else if (error.message.includes('violates check constraint')) {
+          errorMessage = 'Dados inválidos. Verifique as informações inseridas.';
+        } else if (error.message.includes('invalid input')) {
+          errorMessage = 'Formato de data ou dados inválidos.';
+        } else {
+          errorMessage = `Erro: ${error.message}`;
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
 const corsHeaders = {
@@ -42,7 +41,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    console.log('Starting process history synchronization...')
+    console.log('Starting enhanced process history synchronization...')
 
     // Get all militaries and processes
     const { data: militaries, error: militariesError } = await supabase
@@ -57,45 +56,64 @@ Deno.serve(async (req) => {
 
     if (processesError) throw processesError
 
+    console.log(`Found ${militaries.length} militaries and ${processes.length} processes`)
+
+    // Create a set of existing process types that actually have assigned militaries
+    const existingProcessTypesWithAssignments = new Set<string>()
+    
+    processes.forEach((process: any) => {
+      if (process.assigned_militaries && Array.isArray(process.assigned_militaries)) {
+        if (process.assigned_militaries.length > 0) {
+          existingProcessTypesWithAssignments.add(process.type)
+        }
+      }
+    })
+
+    console.log('Existing process types with assignments:', Array.from(existingProcessTypesWithAssignments))
+
     const updatedMilitaries = militaries.map((military: any) => {
       const newProcessHistory: Record<string, string | null> = {}
       let hasChanges = false
       let mostRecentProcessDate: string | null = null
 
-      // Get valid process types from existing processes
-      const validProcessTypes = new Set(processes.map((process: any) => process.type))
-
-      // Check if military has any process types in history that no longer exist
-      Object.keys(military.process_history || {}).forEach((processType: string) => {
-        const currentHistoryDate = military.process_history[processType]
-        
-        const hasValidProcessOfType = processes.some((process: any) => 
-          process.type === processType && 
-          process.assigned_militaries?.some((assigned: any) => assigned.militaryId === military.id)
-        )
-
-        if (!hasValidProcessOfType && currentHistoryDate) {
-          console.log(`Removing invalid process type ${processType} from ${military.name}'s history`)
-          hasChanges = true
-        } else if (hasValidProcessOfType && currentHistoryDate) {
-          newProcessHistory[processType] = currentHistoryDate
-        }
-      })
-
-      // Update history based on existing processes
-      processes.forEach((process: any) => {
-        const isAssigned = process.assigned_militaries?.some((assigned: any) => assigned.militaryId === military.id)
-        
-        if (isAssigned) {
-          const currentHistoryDate = newProcessHistory[process.type]
+      // First, check existing history for process types that no longer exist or have no assignments
+      if (military.process_history && typeof military.process_history === 'object') {
+        Object.keys(military.process_history).forEach((processType: string) => {
+          const currentHistoryDate = military.process_history[processType]
           
-          if (!currentHistoryDate || new Date(process.start_date) > new Date(currentHistoryDate)) {
-            newProcessHistory[process.type] = process.start_date
+          // Check if this process type still exists with actual assignments
+          if (!existingProcessTypesWithAssignments.has(processType)) {
+            console.log(`Removing obsolete process type "${processType}" from ${military.name}'s history (had date: ${currentHistoryDate})`)
             hasChanges = true
+            // Don't add to newProcessHistory - effectively removing it
+          } else {
+            // Keep existing valid process types
+            newProcessHistory[processType] = currentHistoryDate
           }
+        })
+      }
 
-          if (!mostRecentProcessDate || new Date(process.start_date) > new Date(mostRecentProcessDate)) {
-            mostRecentProcessDate = process.start_date
+      // Then, update history based on current active processes
+      processes.forEach((process: any) => {
+        if (process.assigned_militaries && Array.isArray(process.assigned_militaries)) {
+          const isAssigned = process.assigned_militaries.some((assigned: any) => 
+            assigned && assigned.militaryId === military.id
+          )
+          
+          if (isAssigned) {
+            const currentHistoryDate = newProcessHistory[process.type]
+            
+            // Update if no date exists or if this process is more recent
+            if (!currentHistoryDate || new Date(process.start_date) > new Date(currentHistoryDate)) {
+              newProcessHistory[process.type] = process.start_date
+              hasChanges = true
+              console.log(`Updated ${military.name}'s history for ${process.type} to ${process.start_date}`)
+            }
+
+            // Update most recent process date
+            if (!mostRecentProcessDate || new Date(process.start_date) > new Date(mostRecentProcessDate)) {
+              mostRecentProcessDate = process.start_date
+            }
           }
         }
       })
@@ -104,6 +122,7 @@ Deno.serve(async (req) => {
       const oldMostRecentDate = military.last_process_date
       if (oldMostRecentDate !== mostRecentProcessDate) {
         hasChanges = true
+        console.log(`Updated ${military.name}'s most recent process date from ${oldMostRecentDate} to ${mostRecentProcessDate}`)
       }
 
       return {
@@ -134,24 +153,29 @@ Deno.serve(async (req) => {
           return null
         }
         
+        console.log(`Successfully updated ${military.name}`)
         return military
       })
 
       await Promise.all(updatePromises)
     }
 
-    console.log('Process history synchronization completed')
+    console.log('Enhanced process history synchronization completed')
 
     return new Response(JSON.stringify({ 
       success: true, 
-      updatedCount: militariesToUpdate.length 
+      updatedCount: militariesToUpdate.length,
+      message: `Sincronização concluída. ${militariesToUpdate.length} militares tiveram seus históricos atualizados.`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
 
   } catch (error) {
     console.error('Error synchronizing process history:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: 'Erro durante a sincronização do histórico de processos'
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
