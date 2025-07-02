@@ -28,7 +28,10 @@ const FUNCTIONS_URL = 'https://tghmaigxcrnhyjzvjpvc.supabase.co/functions/v1';
 
 // Helper functions for API calls
 const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const response = await fetch(`${FUNCTIONS_URL}${endpoint}`, {
+  const url = `${FUNCTIONS_URL}${endpoint}`;
+  console.log('Making request to:', url);
+  
+  const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -37,9 +40,20 @@ const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
     },
   });
 
+  console.log('Response status:', response.status);
+  console.log('Response ok:', response.ok);
+
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Request failed');
+    const errorText = await response.text();
+    console.error('Request failed with response:', errorText);
+    let errorMessage;
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.error || 'Request failed';
+    } catch {
+      errorMessage = errorText || 'Request failed';
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -286,9 +300,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      await makeRequest(`/militaries?id=${id}`, {
+      console.log(`Calling delete endpoint for military: ${militaryToDelete.name}`);
+      
+      const result = await makeRequest(`/militaries?id=${id}`, {
         method: 'DELETE'
       });
+
+      console.log('Delete result:', result);
 
       setMilitaries(prev => prev.filter(m => m.id !== id));
       toast.success(`Militar ${militaryToDelete.name} removido com sucesso`);
