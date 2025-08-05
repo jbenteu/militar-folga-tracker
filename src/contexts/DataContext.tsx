@@ -24,8 +24,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 // Base URL for edge functions - using the correct Supabase project URL
-const SUPABASE_PROJECT_URL = 'https://tghmaigxcrnhyjzvjpvc.supabase.co';
-const FUNCTIONS_URL = `${SUPABASE_PROJECT_URL}/functions/v1`;
+const FUNCTIONS_URL = 'https://tghmaigxcrnhyjzvjpvc.supabase.co/functions/v1';
 
 // Helper functions for API calls with improved error handling
 const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
