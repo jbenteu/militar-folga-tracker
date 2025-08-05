@@ -1,4 +1,3 @@
-
 import React, { ReactNode, createContext, useContext, useState, useEffect } from 'react';
 import { Military, MilitaryWithRestTime, Process, ProcessType, AssignedMilitary, MilitaryFunction, Rank, ProcessClass, MilitaryGrade, RANKS_ORDER, getRankGrade } from '@/types';
 import { calculateRestDays } from '@/lib/utils';
@@ -28,37 +27,51 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 const SUPABASE_PROJECT_URL = 'https://tghmaigxcrnhyjzvjpvc.supabase.co';
 const FUNCTIONS_URL = `${SUPABASE_PROJECT_URL}/functions/v1`;
 
-// Helper functions for API calls
+// Helper functions for API calls with improved error handling
 const makeRequest = async (endpoint: string, options: RequestInit = {}) => {
   const url = `${FUNCTIONS_URL}${endpoint}`;
-  console.log('Making request to:', url);
+  console.log(`Making ${options.method || 'GET'} request to:`, url);
+  console.log('Request options:', JSON.stringify(options, null, 2));
   
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnaG1haWd4Y3JuaHlqenZqcHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1MjM5MTAsImV4cCI6MjA2NDA5OTkxMH0.aE3SFUMpAeySqbSayZ4n7XjyoV3XSvr1GoKbP2G-voU`,
-      ...options.headers,
-    },
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnaG1haWd4Y3JuaHlqenZqcHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1MjM5MTAsImV4cCI6MjA2NDA5OTkxMH0.aE3SFUMpAeySqbSayZ4n7XjyoV3XSvr1GoKbP2G-voU`,
+        ...options.headers,
+      },
+    });
 
-  console.log('Response status:', response.status);
-  console.log('Response ok:', response.ok);
+    console.log(`Response status: ${response.status}, ok: ${response.ok}`);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Request failed with response:', errorText);
-    let errorMessage;
-    try {
-      const errorJson = JSON.parse(errorText);
-      errorMessage = errorJson.error || 'Request failed';
-    } catch {
-      errorMessage = errorText || 'Request failed';
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Request failed with status ${response.status}:`, errorText);
+      
+      let errorMessage;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorText || 'Request failed';
+      } catch {
+        errorMessage = errorText || `HTTP ${response.status} error`;
+      }
+      
+      throw new Error(errorMessage);
     }
-    throw new Error(errorMessage);
-  }
 
-  return response.json();
+    const responseText = await response.text();
+    console.log('Response body:', responseText);
+    
+    if (!responseText.trim()) {
+      return {};
+    }
+    
+    return JSON.parse(responseText);
+  } catch (error) {
+    console.error('Network/parsing error in makeRequest:', error);
+    throw error;
+  }
 };
 
 // Helper functions for safe type conversion
@@ -141,7 +154,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('Processes loaded:', transformedProcesses.length);
     } catch (error) {
       console.error('Error loading data:', error);
-      toast.error('Erro ao conectar com o banco de dados');
+      toast.error(`Erro ao conectar com o banco de dados: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
       console.log('Data loading completed');
@@ -168,13 +181,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('Process history synchronization completed');
     } catch (error) {
       console.error('Error synchronizing process history:', error);
-      toast.error('Erro ao sincronizar histórico de processos');
+      toast.error(`Erro ao sincronizar histórico de processos: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 
-  // Military CRUD operations using edge functions
+  // Military CRUD operations using edge functions with enhanced error handling
   const addMilitary = async (military: Omit<Military, 'id' | 'processHistory'>) => {
     try {
+      console.log('Adding military:', military);
+      
       const militaryData = {
         name: military.name,
         rank: military.rank,
@@ -211,7 +226,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast.success(`Militar ${military.name} adicionado com sucesso`);
     } catch (error) {
       console.error('Error adding military:', error);
-      toast.error('Erro ao adicionar militar');
+      toast.error(`Erro ao adicionar militar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 
@@ -259,6 +274,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const updateMilitary = async (updatedMilitary: Military) => {
     try {
+      console.log('Updating military:', updatedMilitary.id, updatedMilitary.name);
+      
       const processHistoryForStorage: Record<string, string | null> = {};
       Object.entries(updatedMilitary.processHistory).forEach(([key, value]) => {
         processHistoryForStorage[key] = value ? value.toISOString() : null;
@@ -277,7 +294,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         process_history: processHistoryForStorage
       };
 
-      await makeRequest(`/militaries?id=${updatedMilitary.id}`, {
+      console.log('Military data to update:', militaryData);
+
+      await makeRequest(`/militaries?id=${encodeURIComponent(updatedMilitary.id)}`, {
         method: 'PUT',
         body: JSON.stringify(militaryData)
       });
@@ -288,21 +307,22 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast.success(`Dados do militar ${updatedMilitary.name} atualizados`);
     } catch (error) {
       console.error('Error updating military:', error);
-      toast.error('Erro ao atualizar militar');
+      toast.error(`Erro ao atualizar militar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 
   const deleteMilitary = async (id: string) => {
     try {
-      console.log('Attempting to delete military:', id);
+      console.log('Attempting to delete military with ID:', id);
       
       const militaryToDelete = militaries.find(m => m.id === id);
       if (!militaryToDelete) {
+        console.error('Military not found with ID:', id);
         toast.error("Militar não encontrado");
         return;
       }
 
-      console.log(`Calling delete endpoint for military: ${militaryToDelete.name}`);
+      console.log(`Calling delete endpoint for military: ${militaryToDelete.name} (${id})`);
       
       const result = await makeRequest(`/militaries?id=${encodeURIComponent(id)}`, {
         method: 'DELETE'
@@ -310,8 +330,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('Delete result:', result);
 
-      setMilitaries(prev => prev.filter(m => m.id !== id));
-      toast.success(`Militar ${militaryToDelete.name} removido com sucesso`);
+      if (result.success || result.success === undefined) {
+        setMilitaries(prev => prev.filter(m => m.id !== id));
+        toast.success(`Militar ${militaryToDelete.name} removido com sucesso`);
+      } else {
+        throw new Error('Falha na exclusão do militar');
+      }
       
     } catch (error) {
       console.error('Error deleting military:', error);
@@ -320,7 +344,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Process CRUD operations using edge functions
+  // Process CRUD operations using edge functions with enhanced error handling
   const addProcess = async (process: Omit<Process, 'id'>) => {
     try {
       console.log('Adding process:', process);
@@ -333,6 +357,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         end_date: process.endDate?.toISOString() || null,
         assigned_militaries: process.assignedMilitaries
       };
+
+      console.log('Process data to send:', processData);
 
       const data = await makeRequest('/processes', {
         method: 'POST',
@@ -357,12 +383,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast.success("Processo adicionado com sucesso");
     } catch (error) {
       console.error('Error adding process:', error);
-      toast.error('Erro ao adicionar processo');
+      toast.error(`Erro ao adicionar processo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 
   const updateProcess = async (updatedProcess: Process) => {
     try {
+      console.log('Updating process:', updatedProcess.id, updatedProcess.number);
+      
       const processData = {
         type: updatedProcess.type,
         description: updatedProcess.class,
@@ -372,7 +400,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         assigned_militaries: updatedProcess.assignedMilitaries
       };
 
-      await makeRequest(`/processes?id=${updatedProcess.id}`, {
+      console.log('Process data to update:', processData);
+
+      await makeRequest(`/processes?id=${encodeURIComponent(updatedProcess.id)}`, {
         method: 'PUT',
         body: JSON.stringify(processData)
       });
@@ -384,27 +414,43 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toast.success("Processo atualizado com sucesso");
     } catch (error) {
       console.error('Error updating process:', error);
-      toast.error('Erro ao atualizar processo');
+      toast.error(`Erro ao atualizar processo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 
   const deleteProcess = async (id: string) => {
     try {
-      console.log('Deleting process:', id);
+      console.log('Attempting to delete process with ID:', id);
       
-      await makeRequest(`/processes?id=${id}`, {
+      const processToDelete = processes.find(p => p.id === id);
+      if (!processToDelete) {
+        console.error('Process not found with ID:', id);
+        toast.error("Processo não encontrado");
+        return;
+      }
+
+      console.log(`Calling delete endpoint for process: ${processToDelete.number} (${id})`);
+      
+      const result = await makeRequest(`/processes?id=${encodeURIComponent(id)}`, {
         method: 'DELETE'
       });
 
-      setProcesses(prev => prev.filter(p => p.id !== id));
-      
-      // Reload militaries to get updated process history
-      await loadData();
+      console.log('Process delete result:', result);
 
-      toast.success("Processo removido e folgas restauradas com sucesso");
+      if (result.success || result.success === undefined) {
+        setProcesses(prev => prev.filter(p => p.id !== id));
+        
+        // Reload militaries to get updated process history
+        await loadData();
+
+        toast.success("Processo removido e folgas restauradas com sucesso");
+      } else {
+        throw new Error('Falha na exclusão do processo');
+      }
     } catch (error) {
       console.error('Error deleting process:', error);
-      toast.error('Erro ao excluir processo');
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao excluir processo';
+      toast.error(errorMessage);
     }
   };
 
