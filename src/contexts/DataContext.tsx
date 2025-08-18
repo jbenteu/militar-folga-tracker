@@ -242,7 +242,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const updateMilitary = async (updatedMilitary: Military) => {
     try {
-      console.log('Updating military:', updatedMilitary.id, updatedMilitary.name);
+      console.log('=== STARTING MILITARY UPDATE ===');
+      console.log('Military ID:', updatedMilitary.id);
+      console.log('Military name:', updatedMilitary.name);
+      console.log('Current militaries count:', militaries.length);
       
       const processHistoryForStorage: Record<string, string | null> = {};
       Object.entries(updatedMilitary.processHistory).forEach(([key, value]) => {
@@ -264,18 +267,32 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('Military data to update:', militaryData);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('militaries')
         .update(militaryData)
-        .eq('id', updatedMilitary.id);
+        .eq('id', updatedMilitary.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw error;
+      }
 
-      setMilitaries(prev => prev.map(m => 
-        m.id === updatedMilitary.id ? updatedMilitary : m
-      ));
+      console.log('Supabase update successful, returned data:', data);
+
+      setMilitaries(prev => {
+        console.log('Updating local militaries state');
+        const updated = prev.map(m => 
+          m.id === updatedMilitary.id ? updatedMilitary : m
+        );
+        console.log('New militaries count:', updated.length);
+        return updated;
+      });
+      
+      console.log('=== MILITARY UPDATE COMPLETED ===');
       toast.success(`Dados do militar ${updatedMilitary.name} atualizados`);
     } catch (error) {
+      console.error('=== MILITARY UPDATE FAILED ===');
       console.error('Error updating military:', error);
       toast.error(`Erro ao atualizar militar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
@@ -283,28 +300,45 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const deleteMilitary = async (id: string) => {
     try {
-      console.log('Attempting to delete military with ID:', id);
+      console.log('=== STARTING MILITARY DELETE ===');
+      console.log('Military ID to delete:', id);
+      console.log('Current militaries count:', militaries.length);
       
       const militaryToDelete = militaries.find(m => m.id === id);
       if (!militaryToDelete) {
         console.error('Military not found with ID:', id);
+        console.log('Available military IDs:', militaries.map(m => m.id));
         toast.error("Militar não encontrado");
         return;
       }
 
       console.log(`Deleting military: ${militaryToDelete.name} (${id})`);
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('militaries')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase delete error:', error);
+        throw error;
+      }
 
-      setMilitaries(prev => prev.filter(m => m.id !== id));
+      console.log('Supabase delete successful, returned data:', data);
+
+      setMilitaries(prev => {
+        console.log('Updating local militaries state - removing military');
+        const filtered = prev.filter(m => m.id !== id);
+        console.log('New militaries count:', filtered.length);
+        return filtered;
+      });
+      
+      console.log('=== MILITARY DELETE COMPLETED ===');
       toast.success(`Militar ${militaryToDelete.name} removido com sucesso`);
       
     } catch (error) {
+      console.error('=== MILITARY DELETE FAILED ===');
       console.error('Error deleting military:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao excluir militar';
       toast.error(errorMessage);
@@ -360,7 +394,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const updateProcess = async (updatedProcess: Process) => {
     try {
-      console.log('Updating process:', updatedProcess.id, updatedProcess.number);
+      console.log('=== STARTING PROCESS UPDATE ===');
+      console.log('Process ID:', updatedProcess.id);
+      console.log('Process number:', updatedProcess.number);
+      console.log('Current processes count:', processes.length);
       
       const processData = {
         type: updatedProcess.type,
@@ -373,19 +410,32 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('Process data to update:', processData);
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('processes')
         .update(processData as any)
-        .eq('id', updatedProcess.id);
+        .eq('id', updatedProcess.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw error;
+      }
 
-      setProcesses(prev => prev.map(p => 
-        p.id === updatedProcess.id ? updatedProcess : p
-      ));
+      console.log('Supabase update successful, returned data:', data);
+
+      setProcesses(prev => {
+        console.log('Updating local processes state');
+        const updated = prev.map(p => 
+          p.id === updatedProcess.id ? updatedProcess : p
+        );
+        console.log('New processes count:', updated.length);
+        return updated;
+      });
       
+      console.log('=== PROCESS UPDATE COMPLETED ===');
       toast.success("Processo atualizado com sucesso");
     } catch (error) {
+      console.error('=== PROCESS UPDATE FAILED ===');
       console.error('Error updating process:', error);
       toast.error(`Erro ao atualizar processo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
@@ -393,31 +443,48 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const deleteProcess = async (id: string) => {
     try {
-      console.log('Attempting to delete process with ID:', id);
+      console.log('=== STARTING PROCESS DELETE ===');
+      console.log('Process ID to delete:', id);
+      console.log('Current processes count:', processes.length);
       
       const processToDelete = processes.find(p => p.id === id);
       if (!processToDelete) {
         console.error('Process not found with ID:', id);
+        console.log('Available process IDs:', processes.map(p => p.id));
         toast.error("Processo não encontrado");
         return;
       }
 
       console.log(`Deleting process: ${processToDelete.number} (${id})`);
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('processes')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase delete error:', error);
+        throw error;
+      }
 
-      setProcesses(prev => prev.filter(p => p.id !== id));
+      console.log('Supabase delete successful, returned data:', data);
+
+      setProcesses(prev => {
+        console.log('Updating local processes state - removing process');
+        const filtered = prev.filter(p => p.id !== id);
+        console.log('New processes count:', filtered.length);
+        return filtered;
+      });
       
+      console.log('Reloading all data to update process history...');
       // Reload militaries to get updated process history
       await loadData();
 
+      console.log('=== PROCESS DELETE COMPLETED ===');
       toast.success("Processo removido e folgas restauradas com sucesso");
     } catch (error) {
+      console.error('=== PROCESS DELETE FAILED ===');
       console.error('Error deleting process:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao excluir processo';
       toast.error(errorMessage);
