@@ -22,7 +22,7 @@ interface DataContextType {
   synchronizeProcessHistory: () => Promise<void>;
 }
 
-const DataContext = createContext<DataContextType | undefined>(undefined);
+const DataContext = createContext<DataContextType>({} as DataContextType);
 
 
 // Helper functions for safe type conversion
@@ -604,7 +604,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useData = () => {
   const context = useContext(DataContext);
-  if (context === undefined) {
+  if (!context || Object.keys(context).length === 0) {
     console.error('useData must be used within a DataProvider');
     throw new Error('useData must be used within a DataProvider');
   }
