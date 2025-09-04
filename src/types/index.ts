@@ -102,6 +102,15 @@ export interface Process {
   startDate: Date;
   endDate: Date | null;
   assignedMilitaries: AssignedMilitary[];
+  material?: string;
+  nomeado?: boolean;
+  numeroBoletimNomeado?: string;
+  recebido?: boolean;
+  publicado?: boolean;
+  numeroBoletimPublicado?: string;
+  matrizAnalise?: boolean;
+  encaminhado?: boolean;
+  dataEncaminhamento?: Date;
 }
 
 export interface MilitaryWithRestTime extends Military {

@@ -33,6 +33,8 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 
 interface ProcessFormProps {
   processId: string | null;
@@ -55,6 +57,17 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   const [year, setYear] = useState<string>("2025");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // New fields for TEAM, TREM, PT
+  const [material, setMaterial] = useState("");
+  const [nomeado, setNomeado] = useState(false);
+  const [numeroBoletimNomeado, setNumeroBoletimNomeado] = useState("");
+  const [recebido, setRecebido] = useState(false);
+  const [publicado, setPublicado] = useState(false);
+  const [numeroBoletimPublicado, setNumeroBoletimPublicado] = useState("");
+  const [matrizAnalise, setMatrizAnalise] = useState(false);
+  const [encaminhado, setEncaminhado] = useState(false);
+  const [dataEncaminhamento, setDataEncaminhamento] = useState<Date | null>(null);
+  
   // Generate unique process number for new processes
   useEffect(() => {
     if (!processId) {
@@ -73,6 +86,17 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
         setEndDate(process.endDate);
         setAssignedMilitaries(process.assignedMilitaries);
         setSelectedMilitaryIds(process.assignedMilitaries.map(m => m.militaryId));
+        
+        // Load new fields if they exist
+        setMaterial(process.material || "");
+        setNomeado(process.nomeado || false);
+        setNumeroBoletimNomeado(process.numeroBoletimNomeado || "");
+        setRecebido(process.recebido || false);
+        setPublicado(process.publicado || false);
+        setNumeroBoletimPublicado(process.numeroBoletimPublicado || "");
+        setMatrizAnalise(process.matrizAnalise || false);
+        setEncaminhado(process.encaminhado || false);
+        setDataEncaminhamento(process.dataEncaminhamento || null);
         
         // Extract month and year for special process types
         if (isSpecialProcessType(process.type)) {
@@ -94,6 +118,17 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
       setEndDate(null);
       setAssignedMilitaries([]);
       setSelectedMilitaryIds([]);
+      
+      // Reset new fields
+      setMaterial("");
+      setNomeado(false);
+      setNumeroBoletimNomeado("");
+      setRecebido(false);
+      setPublicado(false);
+      setNumeroBoletimPublicado("");
+      setMatrizAnalise(false);
+      setEncaminhado(false);
+      setDataEncaminhamento(null);
       
       // Initialize month/year for special process types
       const currentDate = new Date();
@@ -214,6 +249,17 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
           militaryId: assigned.militaryId,
           function: assigned.function
         })),
+        ...(shouldShowExtendedFields(type) && {
+          material,
+          nomeado,
+          numeroBoletimNomeado: nomeado ? numeroBoletimNomeado : undefined,
+          recebido,
+          publicado,
+          numeroBoletimPublicado: publicado ? numeroBoletimPublicado : undefined,
+          matrizAnalise,
+          encaminhado,
+          dataEncaminhamento: encaminhado ? dataEncaminhamento : undefined,
+        }),
       };
 
       console.log('Final process data to submit:', processData);
@@ -339,6 +385,10 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   const years = ["2025", "2026", "2027", "2028", "2029", "2030"];
   
   const isSpecialType = isSpecialProcessType(type);
+  
+  const shouldShowExtendedFields = (processType: ProcessType): boolean => {
+    return processType === "TEAM" || processType === "TREM" || processType === "PT";
+  };
   
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -523,6 +573,153 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
                       </>
                     )}
                   </div>
+                  
+                  {/* Material field for TEAM and TREM */}
+                  {(type === "TEAM" || type === "TREM") && (
+                    <Card className="border shadow-sm mt-4">
+                      <CardHeader>
+                        <CardTitle>Material</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <Label htmlFor="material">Descrição dos Materiais</Label>
+                          <Textarea
+                            id="material"
+                            value={material}
+                            onChange={(e) => setMaterial(e.target.value)}
+                            placeholder="Descrição dos materiais listados"
+                            rows={3}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Extended fields for TEAM, TREM, PT */}
+                  {shouldShowExtendedFields(type) && (
+                    <Card className="border shadow-sm mt-4">
+                      <CardHeader>
+                        <CardTitle>Status do Processo</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Nomeado */}
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="nomeado"
+                              checked={nomeado}
+                              onCheckedChange={(checked) => setNomeado(checked as boolean)}
+                            />
+                            <Label htmlFor="nomeado" className="text-sm font-medium">
+                              Nomeado
+                            </Label>
+                          </div>
+                          {nomeado && (
+                            <div className="ml-6 space-y-2">
+                              <Label htmlFor="numeroBoletimNomeado">Número do Boletim</Label>
+                              <Input
+                                id="numeroBoletimNomeado"
+                                value={numeroBoletimNomeado}
+                                onChange={(e) => setNumeroBoletimNomeado(e.target.value)}
+                                placeholder="Digite o número do boletim"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Recebido */}
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="recebido"
+                            checked={recebido}
+                            onCheckedChange={(checked) => setRecebido(checked as boolean)}
+                          />
+                          <Label htmlFor="recebido" className="text-sm font-medium">
+                            Recebido
+                          </Label>
+                        </div>
+
+                        {/* Publicado */}
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="publicado"
+                              checked={publicado}
+                              onCheckedChange={(checked) => setPublicado(checked as boolean)}
+                            />
+                            <Label htmlFor="publicado" className="text-sm font-medium">
+                              Publicado
+                            </Label>
+                          </div>
+                          {publicado && (
+                            <div className="ml-6 space-y-2">
+                              <Label htmlFor="numeroBoletimPublicado">Número do Boletim</Label>
+                              <Input
+                                id="numeroBoletimPublicado"
+                                value={numeroBoletimPublicado}
+                                onChange={(e) => setNumeroBoletimPublicado(e.target.value)}
+                                placeholder="Digite o número do boletim"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Matriz de Análise */}
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="matrizAnalise"
+                            checked={matrizAnalise}
+                            onCheckedChange={(checked) => setMatrizAnalise(checked as boolean)}
+                          />
+                          <Label htmlFor="matrizAnalise" className="text-sm font-medium">
+                            Matriz de Análise
+                          </Label>
+                        </div>
+
+                        {/* Encaminhado */}
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="encaminhado"
+                              checked={encaminhado}
+                              onCheckedChange={(checked) => setEncaminhado(checked as boolean)}
+                            />
+                            <Label htmlFor="encaminhado" className="text-sm font-medium">
+                              Encaminhado
+                            </Label>
+                          </div>
+                          {encaminhado && (
+                            <div className="ml-6 space-y-2">
+                              <Label htmlFor="dataEncaminhamento">Data de Encaminhamento</Label>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full justify-start text-left font-normal",
+                                      !dataEncaminhamento && "text-muted-foreground"
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {dataEncaminhamento ? format(dataEncaminhamento, "dd/MM/yyyy") : <span>Selecione a data</span>}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={dataEncaminhamento}
+                                    onSelect={setDataEncaminhamento}
+                                    initialFocus
+                                    className="pointer-events-auto"
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

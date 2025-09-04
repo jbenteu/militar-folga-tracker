@@ -146,6 +146,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Load data from Supabase on mount
   useEffect(() => {
     loadData();
+    // Sync process history on app start
+    setTimeout(() => {
+      synchronizeProcessHistory();
+    }, 1000);
   }, []);
 
   // Military CRUD operations using Supabase client
