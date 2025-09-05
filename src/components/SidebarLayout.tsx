@@ -13,9 +13,9 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
   const [isOpen, setIsOpen] = useState(false);
   
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
+      <div className="hidden lg:block h-screen">
         <Sidebar />
       </div>
       
