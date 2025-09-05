@@ -31,11 +31,10 @@ import {
   TableHead, 
   TableHeader, 
   TableRow 
- } from "@/components/ui/table";
+} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ProcessFormProps {
   processId: string | null;
@@ -72,8 +71,7 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
   // Generate unique process number for new processes
   useEffect(() => {
     if (!processId) {
-      const data = useData();
-      setNumber(generateUniqueProcessNumber(type, data.processes));
+      setNumber(generateUniqueProcessNumber(type));
     }
   }, [processId, type]);
   
@@ -727,100 +725,85 @@ export function ProcessForm({ processId, processType, onComplete }: ProcessFormP
             </TabsContent>
           
             <TabsContent value="militaries" className="mt-0">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Left Side - Designação de Militares */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="text-lg font-medium">Designação de Militares</h3>
-                      <span className={`text-sm ${
-                        type === "Comissão de Conferência de Gêneros QR" 
-                          ? (assignedMilitaries.length !== 6 ? "text-red-500" : "text-green-600")
-                          : (assignedMilitaries.length < minMilitaries ? "text-red-500" : "text-green-600")
-                      }`}>
-                        {type === "Comissão de Conferência de Gêneros QR" 
-                          ? (assignedMilitaries.length !== 6 ? "Exige exatamente 6 militares" : "Quantidade correta")
-                          : (assignedMilitaries.length < minMilitaries 
-                            ? `Mínimo de ${minMilitaries} ${minMilitaries === 1 ? 'militar' : 'militares'}`
-                            : "Quantidade suficiente")
-                        }
-                      </span>
-                    </div>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-medium">Designação de Militares</h3>
+                    <span className={`text-sm ${
+                      type === "Comissão de Conferência de Gêneros QR" 
+                        ? (assignedMilitaries.length !== 6 ? "text-red-500" : "text-green-600")
+                        : (assignedMilitaries.length < minMilitaries ? "text-red-500" : "text-green-600")
+                    }`}>
+                      {type === "Comissão de Conferência de Gêneros QR" 
+                        ? (assignedMilitaries.length !== 6 ? "Exige exatamente 6 militares" : "Quantidade correta")
+                        : (assignedMilitaries.length < minMilitaries 
+                          ? `Mínimo de ${minMilitaries} ${minMilitaries === 1 ? 'militar' : 'militares'}`
+                          : "Quantidade suficiente")
+                      }
+                    </span>
                   </div>
-
-                  {assignedMilitaries.length > 0 && (
-                    <div className="bg-white p-3 rounded border border-military-blue mb-4">
-                      <h3 className="text-sm font-semibold mb-2">Militares selecionados:</h3>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Posto/Grad.</TableHead>
-                            <TableHead>Nome</TableHead>
-                            <TableHead>Função</TableHead>
-                            <TableHead>Ação</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {assignedMilitaries.map((assigned) => {
-                            const mil = militaries.find((m) => m.id === assigned.militaryId);
-                            return mil ? (
-                              <TableRow key={assigned.militaryId}>
-                                <TableCell>{mil.rank}</TableCell>
-                                <TableCell>{mil.name}</TableCell>
-                                <TableCell>
-                                  <Select 
-                                    value={assigned.function} 
-                                    onValueChange={(value) => handleChangeFunction(assigned.militaryId, value as MilitaryFunction)}
-                                  >
-                                    <SelectTrigger className="w-full">
-                                      <SelectValue placeholder="Selecione a função" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {getAvailableFunctions(type).map((func) => (
-                                        <SelectItem key={func} value={func}>
-                                          {func}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </TableCell>
-                                <TableCell>
-                                  <Button 
-                                    variant="destructive" 
-                                    size="sm"
-                                    onClick={() => handleSelectMilitary(assigned.militaryId)}
-                                    type="button"
-                                  >
-                                    Remover
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ) : null;
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
                 </div>
 
-                {/* Right Side - Ranking de Militares */}
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-medium">Ranking de Militares por Folga</h3>
-                    <p className="text-sm text-gray-600">Clique para selecionar/deselecionar militares</p>
+                {assignedMilitaries.length > 0 && (
+                  <div className="bg-white p-3 rounded border border-military-blue mb-4">
+                    <h3 className="text-sm font-semibold mb-2">Militares selecionados:</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Posto/Grad.</TableHead>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Função</TableHead>
+                          <TableHead>Ação</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {assignedMilitaries.map((assigned) => {
+                          const mil = militaries.find((m) => m.id === assigned.militaryId);
+                          return mil ? (
+                            <TableRow key={assigned.militaryId}>
+                              <TableCell>{mil.rank}</TableCell>
+                              <TableCell>{mil.name}</TableCell>
+                              <TableCell>
+                                <Select 
+                                  value={assigned.function} 
+                                  onValueChange={(value) => handleChangeFunction(assigned.militaryId, value as MilitaryFunction)}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Selecione a função" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {getAvailableFunctions(type).map((func) => (
+                                      <SelectItem key={func} value={func}>
+                                        {func}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={() => handleSelectMilitary(assigned.militaryId)}
+                                  type="button"
+                                >
+                                  Remover
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ) : null;
+                        })}
+                      </TableBody>
+                    </Table>
                   </div>
-                  
-                  <Card className="border shadow-sm">
-                    <CardContent className="p-0">
-                      <ScrollArea className="h-[500px]">
-                        <MilitaryRanking
-                          processType={type}
-                          selectedIds={selectedMilitaryIds}
-                          onSelect={handleSelectMilitary}
-                        />
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
+                )}
+                
+                <div className="bg-white rounded border">
+                  <MilitaryRanking 
+                    processType={type} 
+                    onSelect={handleSelectMilitary}
+                    selectedIds={selectedMilitaryIds}
+                  />
                 </div>
               </div>
             </TabsContent>

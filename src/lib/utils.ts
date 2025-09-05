@@ -78,29 +78,15 @@ export function addMilitaryWithRestTime(militaries: Military[]): MilitaryWithRes
   }));
 }
 
-export function generateUniqueProcessNumber(processType?: ProcessType, existingProcesses?: { number: string }[]): string {
-  const currentYear = new Date().getFullYear();
-  
-  // Get all existing process numbers for current year
-  const currentYearProcesses = existingProcesses?.filter(p => 
-    p.number.includes(`/${currentYear}`)
-  ) || [];
-  
-  // Extract numbers and find the next sequential number
-  const existingNumbers = currentYearProcesses.map(p => {
-    const match = p.number.match(/^(\d{3})\/\d{4}$/);
-    return match ? parseInt(match[1], 10) : 0;
-  }).filter(num => num > 0);
-  
-  // Find the next available number
-  let nextNumber = 1;
-  if (existingNumbers.length > 0) {
-    const maxNumber = Math.max(...existingNumbers);
-    nextNumber = maxNumber + 1;
+export function generateUniqueProcessNumber(processType?: ProcessType): string {
+  // For special process types, return empty string so user can input manually
+  if (processType === "TEAM" || processType === "TREM" || processType === "PT") {
+    return "";
   }
   
-  // Format as 3-digit number with leading zeros
-  return `${nextNumber.toString().padStart(3, '0')}/${currentYear}`;
+  const currentYear = new Date().getFullYear();
+  const randomNumber = Math.floor(Math.random() * 900) + 100; // 3-digit random number
+  return `${randomNumber}/${currentYear}`;
 }
 
 // Function to parse CSV data for military import
