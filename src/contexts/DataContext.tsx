@@ -2,7 +2,7 @@ import React, { ReactNode, createContext, useContext, useState, useEffect } from
 import { Military, MilitaryWithRestTime, Process, ProcessType, AssignedMilitary, MilitaryFunction, Rank, ProcessClass, MilitaryGrade, RANKS_ORDER, getRankGrade } from '@/types';
 import { calculateRestDays } from '@/lib/utils';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/api';
 
 interface DataContextType {
   militaries: Military[];
@@ -65,15 +65,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log('Loading data from Supabase...');
+      console.log('Loading data from server API...');
       
-      // Load militaries using Supabase client
-      const { data: militariesData, error: militariesError } = await supabase
-        .from('militaries')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if (militariesError) throw militariesError;
+      // Load militaries using server API
+      const militariesData = await apiClient.getMilitaries();
 
       const transformedMilitaries: Military[] = militariesData.map((m: any) => ({
         id: m.id,
@@ -91,13 +86,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setMilitaries(transformedMilitaries);
       console.log('Militaries loaded:', transformedMilitaries.length);
 
-      // Load processes using Supabase client
-      const { data: processesData, error: processesError } = await supabase
-        .from('processes')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if (processesError) throw processesError;
+      // Load processes using server API
+      const processesData = await apiClient.getProcesses();
 
       const transformedProcesses: Process[] = processesData.map((p: any) => ({
         id: p.id,
@@ -112,21 +102,19 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('Processes loaded:', transformedProcesses.length);
     } catch (error) {
       console.error('Error loading data:', error);
-      toast.error(`Erro ao conectar com o banco de dados: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      toast.error(`Erro ao conectar com o servidor: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
       console.log('Data loading completed');
     }
   };
 
-  // Function to synchronize process history using Supabase functions
+  // Function to synchronize process history using server API
   const synchronizeProcessHistory = async () => {
     try {
       console.log('Starting process history synchronization...');
       
-      const { data: result, error } = await supabase.functions.invoke('sync-history');
-
-      if (error) throw error;
+      const result = await apiClient.synchronizeProcessHistory();
 
       if (result?.updatedCount > 0) {
         toast.success(`Histórico de processos sincronizado para ${result.updatedCount} militares`);
@@ -152,7 +140,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, 1000);
   }, []);
 
-  // Military CRUD operations using Supabase client
+  // Military CRUD operations using server API
   const addMilitary = async (military: Omit<Military, 'id' | 'processHistory'>) => {
     try {
       console.log('Adding military:', military);
@@ -170,13 +158,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         process_history: {}
       };
 
-      const { data, error } = await supabase
-        .from('militaries')
-        .insert(militaryData)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await apiClient.addMilitary(militaryData);
 
       const newMilitary: Military = {
         id: data.id,
@@ -215,12 +197,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         process_history: {}
       }));
 
-      const { data, error } = await supabase
-        .from('militaries')
-        .insert(militariesToInsert)
-        .select();
-
-      if (error) throw error;
+      const data = await apiClient.addMilitariesFromCSV(militariesToInsert);
 
       const transformedMilitaries: Military[] = data.map((m: any) => ({
         id: m.id,
@@ -257,6 +234,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       const militaryData = {
+        id: updatedMilitary.id,
         name: updatedMilitary.name,
         rank: updatedMilitary.rank,
         branch: updatedMilitary.branch,
@@ -271,18 +249,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('Military data to update:', militaryData);
 
-      const { data, error } = await supabase
-        .from('militaries')
-        .update(militaryData)
-        .eq('id', updatedMilitary.id)
-        .select();
+      const data = await apiClient.updateMilitary(militaryData);
 
-      if (error) {
-        console.error('Supabase update error:', error);
-        throw error;
-      }
-
-      console.log('Supabase update successful, returned data:', data);
+      console.log('Server API update successful, returned data:', data);
 
       setMilitaries(prev => {
         console.log('Updating local militaries state');
@@ -318,18 +287,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log(`Deleting military: ${militaryToDelete.name} (${id})`);
       
-      const { data, error } = await supabase
-        .from('militaries')
-        .delete()
-        .eq('id', id)
-        .select();
+      const data = await apiClient.deleteMilitary(id);
 
-      if (error) {
-        console.error('Supabase delete error:', error);
-        throw error;
-      }
-
-      console.log('Supabase delete successful, returned data:', data);
+      console.log('Server API delete successful, returned data:', data);
 
       setMilitaries(prev => {
         console.log('Updating local militaries state - removing military');
@@ -349,7 +309,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Process CRUD operations using Supabase client
+  // Process CRUD operations using server API
   const addProcess = async (process: Omit<Process, 'id'>) => {
     try {
       console.log('Adding process:', process);
@@ -366,13 +326,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('Process data to send:', processData);
 
-      const { data, error } = await supabase
-        .from('processes')
-        .insert(processData as any)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await apiClient.addProcess(processData);
 
       const newProcess: Process = {
         id: data.id,
@@ -404,6 +358,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('Current processes count:', processes.length);
       
       const processData = {
+        id: updatedProcess.id,
         type: updatedProcess.type,
         description: updatedProcess.class,
         number: updatedProcess.number,
@@ -414,18 +369,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('Process data to update:', processData);
 
-      const { data, error } = await supabase
-        .from('processes')
-        .update(processData as any)
-        .eq('id', updatedProcess.id)
-        .select();
+      const data = await apiClient.updateProcess(processData);
 
-      if (error) {
-        console.error('Supabase update error:', error);
-        throw error;
-      }
-
-      console.log('Supabase update successful, returned data:', data);
+      console.log('Server API update successful, returned data:', data);
 
       setProcesses(prev => {
         console.log('Updating local processes state');
@@ -461,18 +407,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log(`Deleting process: ${processToDelete.number} (${id})`);
       
-      const { data, error } = await supabase
-        .from('processes')
-        .delete()
-        .eq('id', id)
-        .select();
+      const data = await apiClient.deleteProcess(id);
 
-      if (error) {
-        console.error('Supabase delete error:', error);
-        throw error;
-      }
-
-      console.log('Supabase delete successful, returned data:', data);
+      console.log('Server API delete successful, returned data:', data);
 
       setProcesses(prev => {
         console.log('Updating local processes state - removing process');
